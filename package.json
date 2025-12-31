@@ -1,0 +1,22 @@
+{
+  "name": "mini-osmd",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vexflow": "^1.2.93",
+    "vite": "^7.3.0"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  }
+}
