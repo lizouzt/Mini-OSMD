@@ -160,6 +160,9 @@ export class VexFlowMusicSheetCalculator {
                             keys: keys,
                             duration: duration,
                         });
+                        
+                        // Attach source note for cursor mapping
+                        (vfNote as any).sourceNote = mainNote;
 
                         // Add Accidentals
                         mainNotes.forEach((n, index) => {

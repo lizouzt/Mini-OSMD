@@ -46,7 +46,6 @@ const sampleXML = `
     </measure>
     
     <measure number="2">
-        <!-- Normal spacing test -->
         <note>
             <pitch><step>C</step><octave>5</octave></pitch>
             <duration>4</duration>
@@ -74,8 +73,18 @@ if (container) {
     osmd.load(sampleXML).then(() => {
 
         osmd.render();
-
         console.log("OSMD render finished");
+
+        // Keyboard Controls
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowRight") {
+                osmd.cursor.next();
+            } else if (e.key === "ArrowLeft") {
+                osmd.cursor.prev();
+            }
+        });
+        
+        console.log("Press Left/Right Arrow keys to move cursor.");
 
     });
 

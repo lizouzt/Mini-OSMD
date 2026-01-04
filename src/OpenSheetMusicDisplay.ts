@@ -4,6 +4,7 @@ import { VexFlowMusicSheetCalculator } from "./MusicalScore/Graphical/VexFlow/Ve
 import { VexFlowMusicSheetDrawer } from "./MusicalScore/Graphical/VexFlow/VexFlowMusicSheetDrawer";
 import { MusicSheet } from "./MusicalScore/MusicSheet";
 import { MXLHelper } from "./Common/FileIO/MXLHelper";
+import { Cursor } from "./OpenSheetMusicDisplay/Cursor";
 
 export class OpenSheetMusicDisplay {
     constructor(container: string | HTMLElement) {
@@ -15,12 +16,15 @@ export class OpenSheetMusicDisplay {
             this.container = container;
         }
         this.drawer = new VexFlowMusicSheetDrawer(this.container);
+        this.cursor = new Cursor(this.container);
     }
 
     private container: HTMLElement;
     private drawer: VexFlowMusicSheetDrawer;
     private sheet: MusicSheet | undefined;
     private graphicalSheet: GraphicalMusicSheet | undefined;
+    
+    public cursor: Cursor;
 
     /**
      * Load a MusicXML file string or MXL ArrayBuffer.
@@ -33,15 +37,11 @@ export class OpenSheetMusicDisplay {
                 
                 if (typeof content === "string") {
                     if (content.startsWith("PK")) {
-                        // Very crude binary string check, might fail if encoding issues
-                        // Better if user passes ArrayBuffer for MXL
-                        // But for string input, assume XML unless...
-                        xml = content; // Assume XML
+                        xml = content; 
                     } else {
                         xml = content;
                     }
                 } else {
-                    // ArrayBuffer -> MXL
                     xml = await MXLHelper.MXLtoXML(content);
                 }
 
@@ -64,6 +64,12 @@ export class OpenSheetMusicDisplay {
         this.graphicalSheet = new GraphicalMusicSheet(this.sheet);
         const width = this.container.clientWidth || 1000;
         const vfMeasures = VexFlowMusicSheetCalculator.format(this.graphicalSheet, width);
-        this.drawer.draw(vfMeasures);
+        
+        // Draw and get cursor positions
+        const cursorPositions = this.drawer.draw(vfMeasures);
+        
+        // Initialize Cursor
+        this.cursor.init(cursorPositions);
+        this.cursor.show(); // Show initially at start
     }
 }
