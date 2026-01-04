@@ -18,22 +18,39 @@ export class MusicSheetReader {
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
         const sheet = new MusicSheet();
         
-        // Track open notations
-        const openSlurs: { [number: number]: Slur } = {};
-        const openTies: { [number: number]: Tie } = {};
-        let activeWedge: Wedge | undefined = undefined;
-        let activeOctaveShift: OctaveShift | undefined = undefined;
-        let activeTuplet: Tuplet | undefined = undefined;
-
         const parts = xmlDoc.getElementsByTagName("part");
-        if (parts.length > 0) {
-            const measures = parts[0].getElementsByTagName("measure");
+        let globalStaffOffset = 0;
+
+        for (let p = 0; p < parts.length; p++) {
+            const part = parts[p];
+            const measures = part.getElementsByTagName("measure");
+            
+            // Per-part state
             let divisions = 4;
+            let partMaxStaves = 1; 
+
+            // Track open notations for THIS part
+            const openSlurs: { [number: number]: Slur } = {};
+            const openTies: { [number: number]: Tie } = {};
+            let activeWedge: Wedge | undefined = undefined;
+            let activeOctaveShift: OctaveShift | undefined = undefined;
+            let activeTuplet: Tuplet | undefined = undefined;
 
             for (let i = 0; i < measures.length; i++) {
                 const xmlMeasure = measures[i];
                 const measureNumber = parseInt(xmlMeasure.getAttribute("number") || "0");
-                const measure = new SourceMeasure(measureNumber);
+                
+                // Get or Create SourceMeasure
+                // We assume parts are aligned by index. 
+                // Ideally we should map by measureNumber, but simple index alignment is common for MusicXML.
+                let measure: SourceMeasure;
+                if (sheet.sourceMeasures.length <= i) {
+                    measure = new SourceMeasure(measureNumber);
+                    sheet.addMeasure(measure);
+                } else {
+                    measure = sheet.sourceMeasures[i];
+                }
+
                 let cursor = new Fraction(0, 1);
 
                 // Parse Attributes
@@ -42,6 +59,12 @@ export class MusicSheetReader {
                     const divsNode = attributes.getElementsByTagName("divisions")[0];
                     if (divsNode) divisions = parseInt(divsNode.textContent || "4");
                     
+                    const stavesNode = attributes.getElementsByTagName("staves")[0];
+                    if (stavesNode) {
+                        const val = parseInt(stavesNode.textContent || "1");
+                        partMaxStaves = Math.max(partMaxStaves, val);
+                    }
+
                     const clefs = attributes.getElementsByTagName("clef");
                     for (let c = 0; c < clefs.length; c++) {
                         const clef = clefs[c];
@@ -51,7 +74,9 @@ export class MusicSheetReader {
                         let clefEnum = ClefEnum.G;
                         if (sign === "F") clefEnum = ClefEnum.F;
                         if (sign === "C") clefEnum = ClefEnum.C;
-                        measure.clefs[num - 1] = new ClefInstruction(clefEnum, line);
+                        
+                        const globalIndex = globalStaffOffset + (num - 1);
+                        measure.clefs[globalIndex] = new ClefInstruction(clefEnum, line);
                     }
 
                     const keys = attributes.getElementsByTagName("key");
@@ -60,7 +85,9 @@ export class MusicSheetReader {
                         const num = parseInt(key.getAttribute("number") || "1");
                         const fifths = parseInt(key.getElementsByTagName("fifths")[0]?.textContent || "0");
                         const mode = key.getElementsByTagName("mode")[0]?.textContent || "major";
-                        measure.keys[num - 1] = new KeyInstruction(fifths, mode);
+                        
+                        const globalIndex = globalStaffOffset + (num - 1);
+                        measure.keys[globalIndex] = new KeyInstruction(fifths, mode);
                     }
 
                     const times = attributes.getElementsByTagName("time");
@@ -69,7 +96,9 @@ export class MusicSheetReader {
                         const num = parseInt(time.getAttribute("number") || "1");
                         const beats = parseInt(time.getElementsByTagName("beats")[0]?.textContent || "4");
                         const beatType = parseInt(time.getElementsByTagName("beat-type")[0]?.textContent || "4");
-                        measure.rhythms[num - 1] = new RhythmInstruction(beats, beatType);
+                        
+                        const globalIndex = globalStaffOffset + (num - 1);
+                        measure.rhythms[globalIndex] = new RhythmInstruction(beats, beatType);
                     }
                 }
 
@@ -112,14 +141,11 @@ export class MusicSheetReader {
                                     activeWedge = undefined;
                                 }
                             }
-                            
                             // Octave Shift
                             const octaveShift = type.getElementsByTagName("octave-shift")[0];
                             if (octaveShift) {
                                 const oType = octaveShift.getAttribute("type");
                                 if (oType === "up" || oType === "down") {
-                                    // 'up' -> 8va (shift notes up? No, sounds up), 'down' -> 8vb
-                                    // MusicXML: "up" = 8va, "down" = 8vb
                                     activeOctaveShift = new OctaveShift(oType === "up" ? OctaveShiftType.Up : OctaveShiftType.Down);
                                     sheet.octaveShifts.push(activeOctaveShift);
                                 } else if (oType === "stop") {
@@ -135,19 +161,19 @@ export class MusicSheetReader {
 
                         const note = this.parseNote(child, divisions, noteTimestamp);
                         if (note) {
+                            // Update Staff ID with Offset
+                            note.staffId += globalStaffOffset;
+                            
                             note.isGrace = isGrace;
                             if (pendingDynamics.length > 0 && !isChord) {
                                 note.dynamics.push(...pendingDynamics);
                                 pendingDynamics = [];
                             }
                             
-                            // Wedge attachment
                             if (activeWedge) {
                                 if (!activeWedge.startNote) activeWedge.startNote = note;
                                 activeWedge.endNote = note;
                             }
-                            
-                            // Octave Shift attachment
                             if (activeOctaveShift) {
                                 if (!activeOctaveShift.startNote) activeOctaveShift.startNote = note;
                                 activeOctaveShift.endNote = note;
@@ -214,7 +240,6 @@ export class MusicSheetReader {
                                 if (notations.getElementsByTagName("fermata").length > 0) note.articulations.push("fermata");
                             }
                             
-                            // Lyrics
                             const lyric = child.getElementsByTagName("lyric")[0];
                             if (lyric) {
                                 note.lyric = {
@@ -234,8 +259,8 @@ export class MusicSheetReader {
                         cursor = Fraction.Plus(cursor, new Fraction(d, divisions * 4));
                     }
                 }
-                sheet.addMeasure(measure);
             }
+            globalStaffOffset += partMaxStaves;
         }
         return sheet;
     }
