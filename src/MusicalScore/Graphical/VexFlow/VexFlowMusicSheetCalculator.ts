@@ -3,7 +3,7 @@ import { MusicSheet } from "../../MusicSheet";
 import { GraphicalMusicSheet } from "../GraphicalMusicSheet";
 import { NoteEnum } from "../../VoiceData/Pitch";
 import { ClefEnum } from "../../VoiceData/Instructions/ClefInstruction";
-import { BarLineType } from "../../VoiceData/SourceMeasure";
+import { BarLineType, EndingType } from "../../VoiceData/SourceMeasure";
 import { WedgeType } from "../../VoiceData/Wedge";
 import { OctaveShiftType } from "../../VoiceData/OctaveShift";
 import { Note } from "../../VoiceData/Note";
@@ -47,8 +47,25 @@ export class VexFlowMusicSheetCalculator {
         const currentClefStrs: string[] = ["treble", "bass"]; 
         const currentTimeStrs: string[] = ["4/4", "4/4"];
         const currentKeyStrs: string[] = ["C", "C"]; // Track Key
+        
+        let activeVolta = false;
 
         for (const measure of sheet.sourceMeasures) {
+            // Volta Logic
+            let voltaType = VF.Volta.type.NONE;
+            if (measure.endingType === EndingType.Start) {
+                voltaType = VF.Volta.type.BEGIN;
+                activeVolta = true;
+            } else if (measure.endingType === EndingType.Stop) {
+                voltaType = VF.Volta.type.END;
+                activeVolta = false;
+            } else if (measure.endingType === EndingType.StartStop) {
+                voltaType = VF.Volta.type.BEGIN_END;
+                activeVolta = false;
+            } else if (activeVolta) {
+                voltaType = VF.Volta.type.MID;
+            }
+            
             // Update state for each staff
             measure.clefs.forEach((clef, index) => {
                 if (clef) {
@@ -205,13 +222,15 @@ export class VexFlowMusicSheetCalculator {
                             }
                         });
                         
-                        // Add Lyrics (from mainNote)
-                        if (mainNote.lyric) {
-                            const text = mainNote.lyric.text + (mainNote.lyric.syllabic === "begin" || mainNote.lyric.syllabic === "middle" ? "-" : "");
-                            const annotation = new VF.Annotation(text)
-                                .setFont("Times", 12, "normal")
-                                .setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
-                            vfNote.addModifier(0, annotation);
+                        // Add Lyrics
+                        if (mainNote.lyrics && mainNote.lyrics.length > 0) {
+                            mainNote.lyrics.forEach(lyric => {
+                                const text = lyric.text + (lyric.syllabic === "begin" || lyric.syllabic === "middle" ? "-" : "");
+                                const annotation = new VF.Annotation(text)
+                                    .setFont("Times", 12, "normal")
+                                    .setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
+                                vfNote.addModifier(0, annotation);
+                            });
                         }
 
                          // Handle Grace Notes
@@ -314,6 +333,8 @@ export class VexFlowMusicSheetCalculator {
                     clef: measure.clefs[s] ? currentClefStrs[s] : undefined,
                     keySignature: measure.keys[s] || measure.measureNumber === 1 ? currentKeyStrs[s] : undefined, // Draw if explicit or start
                     timeSignature: measure.rhythms[s] ? currentTimeStrs[s] : undefined,
+                    voltaType: s === 0 ? voltaType : VF.Volta.type.NONE,
+                    voltaNumber: s === 0 ? measure.endingNumber : ""
                 });
             }
 

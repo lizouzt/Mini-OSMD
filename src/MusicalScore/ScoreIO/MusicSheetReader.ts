@@ -1,5 +1,5 @@
 import { MusicSheet } from "../MusicSheet";
-import { SourceMeasure, BarLineType } from "../VoiceData/SourceMeasure";
+import { SourceMeasure, BarLineType, EndingType } from "../VoiceData/SourceMeasure";
 import { Note } from "../VoiceData/Note";
 import { Pitch, NoteEnum } from "../VoiceData/Pitch";
 import { Fraction } from "../../Common/DataObjects/Fraction";
@@ -106,12 +106,31 @@ export class MusicSheetReader {
                 const barlines = xmlMeasure.getElementsByTagName("barline");
                 for (let k = 0; k < barlines.length; k++) {
                     const bl = barlines[k];
-                    if (bl.getAttribute("location") === "right" || !bl.getAttribute("location")) {
+                    const location = bl.getAttribute("location");
+                    
+                    // Ending (Volta)
+                    const ending = bl.getElementsByTagName("ending")[0];
+                    if (ending) {
+                         const num = ending.getAttribute("number") || "";
+                         const type = ending.getAttribute("type") || "start";
+                         measure.endingNumber = num;
+                         
+                         if (type === "start") {
+                             measure.endingType = measure.endingType === EndingType.Stop ? EndingType.StartStop : EndingType.Start;
+                         } else if (type === "stop" || type === "discontinue") {
+                             measure.endingType = measure.endingType === EndingType.Start ? EndingType.StartStop : EndingType.Stop;
+                         }
+                    }
+
+                    if (location === "right" || !location) {
                         const barStyle = bl.getElementsByTagName("bar-style")[0]?.textContent;
                         const repeat = bl.getElementsByTagName("repeat")[0];
                         if (repeat && repeat.getAttribute("direction") === "backward") measure.endBarType = BarLineType.RepeatEnd;
                         else if (barStyle === "light-heavy") measure.endBarType = BarLineType.End;
                         else if (barStyle === "light-light") measure.endBarType = BarLineType.Double;
+                    } else if (location === "left") {
+                         const repeat = bl.getElementsByTagName("repeat")[0];
+                         if (repeat && repeat.getAttribute("direction") === "forward") measure.endBarType = BarLineType.RepeatBegin;
                     }
                 }
 
@@ -240,12 +259,13 @@ export class MusicSheetReader {
                                 if (notations.getElementsByTagName("fermata").length > 0) note.articulations.push("fermata");
                             }
                             
-                            const lyric = child.getElementsByTagName("lyric")[0];
-                            if (lyric) {
-                                note.lyric = {
+                            const lyrics = child.getElementsByTagName("lyric");
+                            for (let l = 0; l < lyrics.length; l++) {
+                                const lyric = lyrics[l];
+                                note.lyrics.push({
                                     text: lyric.getElementsByTagName("text")[0]?.textContent || "",
                                     syllabic: lyric.getElementsByTagName("syllabic")[0]?.textContent || "single"
-                                };
+                                });
                             }
 
                             if (!isChord && !isGrace) cursor = Fraction.Plus(cursor, note.length);

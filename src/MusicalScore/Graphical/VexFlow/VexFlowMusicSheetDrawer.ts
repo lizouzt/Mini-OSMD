@@ -55,6 +55,10 @@ export class VexFlowMusicSheetDrawer {
                     if (measureData.endBarLineType !== undefined) {
                         stave.setEndBarType(measureData.endBarLineType);
                     }
+                    
+                    if (staffData.voltaType !== undefined && staffData.voltaType !== VF.Volta.type.NONE) {
+                        stave.setVoltaType(staffData.voltaType, staffData.voltaNumber || "1", 0);
+                    }
 
                     stave.setContext(this.ctx).draw();
                     vfStaves.push(stave);

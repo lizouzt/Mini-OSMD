@@ -11,6 +11,14 @@ export enum BarLineType {
     RepeatBegin = 4
 }
 
+export enum EndingType {
+    None = 0,
+    Start = 1,
+    Stop = 2,
+    StartStop = 3,
+    Discontinue = 4
+}
+
 export class SourceMeasure {
     constructor(measureNumber: number) {
         this.measureNumber = measureNumber;
@@ -19,13 +27,14 @@ export class SourceMeasure {
     public measureNumber: number;
     public notes: Note[] = [];
     
-    // Attributes per Staff (Index 1-based usually, but we can use array index 0 for staff 1)
-    // Actually, let's use a simple array where index 0 = Staff 1
     public clefs: ClefInstruction[] = [];
     public keys: KeyInstruction[] = [];
     public rhythms: RhythmInstruction[] = [];
     
     public endBarType: BarLineType = BarLineType.Single;
+    
+    public endingType: EndingType = EndingType.None;
+    public endingNumber: string = "";
 
     public addNote(note: Note): void {
         this.notes.push(note);

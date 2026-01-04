@@ -4,6 +4,11 @@ import { Slur } from "./Slur";
 import { Tuplet } from "./Tuplet";
 import { Tie } from "./Tie";
 
+export interface Lyric {
+    text: string;
+    syllabic: string;
+}
+
 export class Note {
     public pitch: Pitch;
     public length: Fraction;
@@ -25,7 +30,7 @@ export class Note {
     public tuplet?: Tuplet;
     public isGrace: boolean = false;
     public articulations: string[] = []; // e.g. "staccato", "accent", "fermata"
-    public lyric?: { text: string, syllabic: string };
+    public lyrics: Lyric[] = []; // Changed from single lyric
     public dynamics: string[] = []; // e.g. "p", "f", "mf"
 
     constructor(pitch: Pitch, length: Fraction, durationType: string = "quarter", voiceId: string = "1", timestamp: Fraction = new Fraction(0, 1), staffId: number = 1) {
