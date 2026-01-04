@@ -1,4 +1,4 @@
-import Vex from "vexflow";
+import * as VF from "vexflow";
 import { MusicSheet } from "../../MusicSheet";
 import { GraphicalMusicSheet } from "../GraphicalMusicSheet";
 import { NoteEnum } from "../../VoiceData/Pitch";
@@ -8,8 +8,6 @@ import { WedgeType } from "../../VoiceData/Wedge";
 import { OctaveShiftType } from "../../VoiceData/OctaveShift";
 import { Note } from "../../VoiceData/Note";
 import { Tuplet } from "../../VoiceData/Tuplet";
-
-const VF = Vex.Flow;
 
 export class VexFlowMusicSheetCalculator {
     private static getKeySignature(fifths: number): string {
@@ -65,7 +63,7 @@ export class VexFlowMusicSheetCalculator {
             } else if (activeVolta) {
                 voltaType = VF.Volta.type.MID;
             }
-            
+
             // Update state for each staff
             measure.clefs.forEach((clef, index) => {
                 if (clef) {
@@ -189,7 +187,7 @@ export class VexFlowMusicSheetCalculator {
                                 else if (n.pitch.alter === -1) acc = "b";
                                 else if (n.pitch.alter === 2) acc = "##";
                                 else if (n.pitch.alter === -2) acc = "bb";
-                                if (acc) vfNote.addAccidental(index, new VF.Accidental(acc));
+                                if (acc) vfNote.addModifier(new VF.Accidental(acc), index);
                             }
                             
                             // Add Articulations
@@ -206,7 +204,7 @@ export class VexFlowMusicSheetCalculator {
                                     const modifier = new VF.Articulation(vfArt);
                                     // Let VexFlow handle position automatically or hint it?
                                     // For simplicity, let VF handle it, but sometimes hints help.
-                                    vfNote.addModifier(index, modifier);
+                                    vfNote.addModifier(modifier, index);
                                 }
                             });
                             
@@ -217,7 +215,7 @@ export class VexFlowMusicSheetCalculator {
                                         text: dyn,
                                         duration: "q" // Duration doesn't matter much for TextDynamics attached to note
                                     });
-                                    vfNote.addModifier(index, vfDyn);
+                                    vfNote.addModifier(vfDyn as any, index);
                                 });
                             }
                         });
@@ -229,7 +227,7 @@ export class VexFlowMusicSheetCalculator {
                                 const annotation = new VF.Annotation(text)
                                     .setFont("Times", 12, "normal")
                                     .setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
-                                vfNote.addModifier(0, annotation);
+                                vfNote.addModifier(annotation, 0);
                             });
                         }
 
@@ -247,18 +245,18 @@ export class VexFlowMusicSheetCalculator {
                                     let acc = "";
                                     if (gn.pitch.alter === 1) acc = "#";
                                     else if (gn.pitch.alter === -1) acc = "b";
-                                    if (acc) gvfNote.addAccidental(0, new VF.Accidental(acc));
+                                    if (acc) gvfNote.addModifier(new VF.Accidental(acc), 0);
                                 }
                                 return gvfNote;
                             });
                             const graceNoteGroup = new VF.GraceNoteGroup(vfGraceNotes);
-                            vfNote.addModifier(0, graceNoteGroup);
+                            vfNote.addModifier(graceNoteGroup, 0);
                             graceNotesQueue = [];
                         }
 
                         // Stem Direction
-                        if (vid === "1") vfNote.setStemDirection(VF.StaveNote.STEM_UP);
-                        else vfNote.setStemDirection(VF.StaveNote.STEM_DOWN);
+                        if (vid === "1") vfNote.setStemDirection(VF.Stem.UP);
+                        else vfNote.setStemDirection(VF.Stem.DOWN);
 
                         staffVoices[s][vid].push(vfNote);
 
@@ -280,8 +278,8 @@ export class VexFlowMusicSheetCalculator {
                         
                         if (tupletVfNotes.length > 0) {
                             const vfTuplet = new VF.Tuplet(tupletVfNotes, {
-                                num_notes: logicalTuplet.actualNotes,
-                                notes_occupied: logicalTuplet.normalNotes
+                                numNotes: logicalTuplet.actualNotes,
+                                notesOccupied: logicalTuplet.normalNotes
                             });
                             staffTuplets[s].push(vfTuplet);
                         }
@@ -296,7 +294,7 @@ export class VexFlowMusicSheetCalculator {
             for (let s = 0; s <= maxStaffIndex; s++) {
                 const tempVoices: any[] = [];
                 for (const vid in staffVoices[s]) {
-                    const voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
+                    const voice = new VF.Voice({ numBeats: 4, beatValue: 4 });
                     voice.addTickables(staffVoices[s][vid]);
                     tempVoices.push(voice);
                 }
@@ -392,8 +390,8 @@ export class VexFlowMusicSheetCalculator {
                 if (vfStart && vfEnd) {
                     const curve = new VF.Curve(vfStart, vfEnd, {
                         thickness: 2,
-                        x_shift: 0,
-                        y_shift: 10
+                        xShift: 0,
+                        yShift: 10
                     });
                     curves.push(curve);
                 }
@@ -406,10 +404,10 @@ export class VexFlowMusicSheetCalculator {
                 const vfEnd = noteMap.get(tie.endNote);
                 if (vfStart && vfEnd) {
                     const staveTie = new VF.StaveTie({
-                        first_note: vfStart,
-                        last_note: vfEnd,
-                        first_indices: [0],
-                        last_indices: [0]
+                        firstNote: vfStart,
+                        lastNote: vfEnd,
+                        firstIndexes: [0],
+                        lastIndexes: [0]
                     });
                     curves.push(staveTie);
                 }
@@ -423,8 +421,8 @@ export class VexFlowMusicSheetCalculator {
                 const vfEnd = noteMap.get(wedge.endNote);
                 if (vfStart && vfEnd) {
                     const hairpin = new VF.StaveHairpin(
-                        { first_note: vfStart, last_note: vfEnd },
-                        wedge.type === WedgeType.Crescendo ? VF.StaveHairpin.type.CRESC : VF.StaveHairpin.type.DESC
+                        { firstNote: vfStart, lastNote: vfEnd },
+                        wedge.type === WedgeType.Crescendo ? VF.StaveHairpin.type.CRESC : VF.StaveHairpin.type.DECRESC
                     );
                     hairpin.setPosition(VF.Modifier.Position.BELOW); // Hairpins are usually below
                     curves.push(hairpin);
@@ -439,7 +437,7 @@ export class VexFlowMusicSheetCalculator {
                 const vfEnd = noteMap.get(shift.endNote);
                 if (vfStart && vfEnd) {
                     const text = shift.type === OctaveShiftType.Up ? "8va" : "8vb";
-                    const position = shift.type === OctaveShiftType.Up ? VF.TextBracket.Positions.TOP : VF.TextBracket.Positions.BOTTOM;
+                    const position = shift.type === OctaveShiftType.Up ? VF.TextBracket.Position.TOP : VF.TextBracket.Position.BOTTOM;
                     const bracket = new VF.TextBracket({
                         start: vfStart,
                         stop: vfEnd,

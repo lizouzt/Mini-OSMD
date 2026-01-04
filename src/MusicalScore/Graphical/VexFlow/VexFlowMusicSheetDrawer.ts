@@ -1,10 +1,8 @@
-import Vex from "vexflow";
-
-const VF = Vex.Flow;
+import * as VF from "vexflow";
 
 export class VexFlowMusicSheetDrawer {
     constructor(container: HTMLElement) {
-        this.renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+        this.renderer = new VF.Renderer(container as HTMLDivElement, VF.Renderer.Backends.SVG);
         this.ctx = this.renderer.getContext();
     }
 
@@ -238,7 +236,7 @@ export class VexFlowMusicSheetDrawer {
         const voiceIds = Object.keys(staffData.vfVoices || {});
         for (const vid of voiceIds) {
             const notes = staffData.vfVoices[vid];
-            const voice = new VF.Voice({ num_beats: numBeats, beat_value: beatValue });
+            const voice = new VF.Voice({ numBeats: numBeats, beatValue: beatValue });
             voice.addTickables(notes);
             voices.push(voice);
             allNotes.push(...notes);
