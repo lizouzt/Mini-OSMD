@@ -1,4 +1,4 @@
-import { Note } from "../Note";
+import { Note } from "./Note";
 
 export class Tie {
     public startNote: Note | undefined;

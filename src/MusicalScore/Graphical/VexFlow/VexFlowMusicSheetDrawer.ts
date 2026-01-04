@@ -128,7 +128,7 @@ export class VexFlowMusicSheetDrawer {
         if (curves) {
             curves.forEach(curve => curve.setContext(this.ctx).draw());
         }
-        
-        this.renderer.resize(this.renderer.getElement().clientWidth, y + 100);
+
+        this.renderer.resize(this.renderer.element.clientWidth, y + 100);
     }
 }

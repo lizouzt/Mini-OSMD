@@ -1,11 +1,13 @@
 import Vex from "vexflow";
-import { MusicSheet } from "../MusicSheet";
-import { GraphicalMusicSheet } from "./GraphicalMusicSheet";
-import { NoteEnum } from "../VoiceData/Pitch";
-import { ClefEnum } from "../VoiceData/Instructions/ClefInstruction";
-import { BarLineType } from "../VoiceData/SourceMeasure";
-import { WedgeType } from "../VoiceData/Wedge";
-import { OctaveShiftType } from "../VoiceData/OctaveShift";
+import { MusicSheet } from "../../MusicSheet";
+import { GraphicalMusicSheet } from "../GraphicalMusicSheet";
+import { NoteEnum } from "../../VoiceData/Pitch";
+import { ClefEnum } from "../../VoiceData/Instructions/ClefInstruction";
+import { BarLineType } from "../../VoiceData/SourceMeasure";
+import { WedgeType } from "../../VoiceData/Wedge";
+import { OctaveShiftType } from "../../VoiceData/OctaveShift";
+import { Note } from "../../VoiceData/Note";
+import { Tuplet } from "../../VoiceData/Tuplet";
 
 const VF = Vex.Flow;
 
