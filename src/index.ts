@@ -80,20 +80,23 @@ const sampleXML = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 const container = document.getElementById("osmd-container");
 
 if (container) {
+  const osmd = new OpenSheetMusicDisplay(container);
 
-    const osmd = new OpenSheetMusicDisplay(container);
+  console.log("Loading Ultimate Test Score...");
 
-    console.log("Loading Ultimate Test Score...");
-    osmd.load(sampleXML).then(() => {
-        osmd.render();
-        console.log("OSMD render finished. Use Left/Right Arrow keys to move cursor.");
-
-        window.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowRight") {
-                osmd.cursor.next();
-            } else if (e.key === "ArrowLeft") {
-                osmd.cursor.prev();
-            }
-        });
+  osmd.load(sampleXML).then(() => {
+    try {
+      osmd.render();
+      console.log("OSMD render finished. Use Left/Right Arrow keys to move cursor.");
+    } catch (e) {
+      console.error("Error during rendering:", e);
+    }
+    window.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") {
+            osmd.cursor.next();
+        } else if (e.key === "ArrowLeft") {
+            osmd.cursor.prev();
+        }
     });
+  });
 }
