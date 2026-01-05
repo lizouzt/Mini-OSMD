@@ -286,15 +286,31 @@ export class MusicSheetReader {
     }
 
     private static parseNote(xmlNote: Element, divisions: number, timestamp: Fraction): Note | undefined {
-        const pitchEl = xmlNote.getElementsByTagName("pitch")[0];
-        if (!pitchEl) return undefined;
-        const step = NoteEnum[pitchEl.getElementsByTagName("step")[0]?.textContent as keyof typeof NoteEnum] || NoteEnum.C;
-        const oct = parseInt(pitchEl.getElementsByTagName("octave")[0]?.textContent || "4");
-        const alt = parseInt(pitchEl.getElementsByTagName("alter")[0]?.textContent || "0");
         const type = xmlNote.getElementsByTagName("type")[0]?.textContent || "quarter";
         const voice = xmlNote.getElementsByTagName("voice")[0]?.textContent || "1";
         const staff = parseInt(xmlNote.getElementsByTagName("staff")[0]?.textContent || "1");
         const dur = parseInt(xmlNote.getElementsByTagName("duration")[0]?.textContent || "1");
-        return new Note(new Pitch(step, oct, alt), new Fraction(dur, divisions * 4), type, voice, timestamp, staff);
+        
+        const rest = xmlNote.getElementsByTagName("rest")[0];
+        const pitchEl = xmlNote.getElementsByTagName("pitch")[0];
+        
+        let pitch: Pitch;
+        let isRest = false;
+
+        if (rest) {
+            isRest = true;
+            pitch = new Pitch(NoteEnum.B, 4, 0); // VexFlow default rest position
+        } else if (pitchEl) {
+            const step = NoteEnum[pitchEl.getElementsByTagName("step")[0]?.textContent as keyof typeof NoteEnum] || NoteEnum.C;
+            const oct = parseInt(pitchEl.getElementsByTagName("octave")[0]?.textContent || "4");
+            const alt = parseInt(pitchEl.getElementsByTagName("alter")[0]?.textContent || "0");
+            pitch = new Pitch(step, oct, alt);
+        } else {
+            return undefined;
+        }
+
+        const note = new Note(pitch, new Fraction(dur, divisions * 4), type, voice, timestamp, staff);
+        note.isRest = isRest;
+        return note;
     }
 }

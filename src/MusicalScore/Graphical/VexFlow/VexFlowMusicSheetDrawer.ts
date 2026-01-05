@@ -74,8 +74,8 @@ export class VexFlowMusicSheetDrawer {
                         voices.forEach((v: any) => v.draw(this.ctx, stave));
                         
                         // Collect Cursor Positions
-                        const staveTop = stave.getYForTopText(0) || currentY;
-                        const staveBot = stave.getYForBottomText(0) || (currentY + 100);
+                        const staveTop = stave.getY();
+                        const staveBot = stave.getY() + stave.getHeight();
                         const staveHeight = staveBot - staveTop;
 
                         allNotes.forEach((note: any) => {

@@ -154,9 +154,14 @@ export class VexFlowMusicSheetCalculator {
 
                         const mainNote = mainNotes[0];
                         const keys: string[] = [];
-                        for (const n of mainNotes) {
-                            const stepName = NoteEnum[n.pitch.step].toLowerCase();
-                            keys.push(`${stepName}/${n.pitch.octave}`);
+                        
+                        if (mainNote.isRest) {
+                            keys.push("b/4");
+                        } else {
+                            for (const n of mainNotes) {
+                                const stepName = NoteEnum[n.pitch.step].toLowerCase();
+                                keys.push(`${stepName}/${n.pitch.octave}`);
+                            }
                         }
                         
                         // Map XML type to VexFlow duration
@@ -168,6 +173,10 @@ export class VexFlowMusicSheetCalculator {
                             case "eighth": duration = "8"; break;
                             case "16th": duration = "16"; break;
                             default: duration = "q";
+                        }
+                        
+                        if (mainNote.isRest) {
+                            duration += "r";
                         }
                         
                         const vfNote = new VF.StaveNote({
