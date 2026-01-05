@@ -23,6 +23,10 @@ export class Cursor {
     private timestamps: number[] = [];
     private currentIndex: number = 0;
 
+    public get hidden(): boolean {
+        return this.cursorElement.style.display === "none";
+    }
+
     public init(timestampMap: Map<number, { x: number, y: number, height: number }[]>) {
         this.timestampMap = timestampMap;
         this.timestamps = Array.from(timestampMap.keys()).sort((a, b) => a - b);

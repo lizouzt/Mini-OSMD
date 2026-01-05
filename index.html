@@ -15,6 +15,10 @@
         <div class="controls">
             <div class="control-group">
                 <select id="score-selector"></select>
+                <label for="file-upload" title="Open File" style="cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #ced4da; border-radius: 4px;">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>
+                    <input type="file" id="file-upload" accept=".xml,.musicxml,.mxl" style="display: none;">
+                </label>
             </div>
             <div class="control-group">
                 <button id="zoom-out-btn" class="icon-btn" title="Zoom Out">

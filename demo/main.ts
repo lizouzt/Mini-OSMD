@@ -78,6 +78,7 @@ const zoomLevelSpan = document.getElementById("zoom-level");
 const cursorPrevBtn = document.getElementById("cursor-prev-btn");
 const cursorNextBtn = document.getElementById("cursor-next-btn");
 const cursorShowBtn = document.getElementById("cursor-show-btn");
+const fileUpload = document.getElementById("file-upload") as HTMLInputElement;
 
 if (container && selectElement) {
     const osmd = new OpenSheetMusicDisplay(container);
@@ -145,6 +146,39 @@ if (container && selectElement) {
         const target = e.target as HTMLSelectElement;
         loadScore(target.value);
     });
+
+    if (fileUpload) {
+        fileUpload.addEventListener("change", async (e) => {
+            const files = (e.target as HTMLInputElement).files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                console.log("File selected:", file.name);
+                
+                try {
+                    currentZoom = 1.0;
+                    updateZoom();
+
+                    const extension = file.name.split('.').pop()?.toLowerCase();
+                    let content: string | ArrayBuffer;
+
+                    if (extension === 'mxl') {
+                        content = await file.arrayBuffer();
+                    } else {
+                        content = await file.text();
+                    }
+
+                    await osmd.load(content);
+                    osmd.render();
+                    
+                    // Reset selector to allow re-selecting same built-in if needed
+                    selectElement.value = ""; 
+                } catch (e) {
+                    console.error("Error loading file:", e);
+                    alert("Error loading file: " + e);
+                }
+            }
+        });
+    }
 
     zoomInBtn?.addEventListener("click", () => {
         currentZoom += 0.1;
