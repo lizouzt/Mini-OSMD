@@ -1,8 +1,8 @@
 import { OpenSheetMusicDisplay } from "../src/index";
 // @ts-ignore
-import beethovenUrl from '../public/demo/Beethoven_AnDieFerneGeliebte.xml?url';
+import beethovenUrl from '/demo/Beethoven_AnDieFerneGeliebte.xml?url';
 // @ts-ignore
-import brahmsUrl from '../public/demo/BrahWiMeSample.musicxml?url';
+import brahmsUrl from '/demo/BrahWiMeSample.musicxml?url';
 
 const builtInXML = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
@@ -101,7 +101,7 @@ if (container && selectElement) {
             // Reset Zoom
             currentZoom = 1.0;
             updateZoom();
-            container.innerHTML = ""; // Clear previous
+            // container.innerHTML = ""; // DO NOT CLEAR: Destroys Renderer/Cursor
 
             console.log(`Loading: ${value}`);
             let xmlContent = "";
