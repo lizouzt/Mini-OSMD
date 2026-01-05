@@ -24,6 +24,7 @@ export declare class Note {
     tieEnds: Tie[];
     tuplet?: Tuplet;
     isGrace: boolean;
+    isRest: boolean;
     articulations: string[];
     lyrics: Lyric[];
     dynamics: string[];

@@ -1,6 +1,6 @@
-import * as i from "vexflow";
-import Z from "jszip";
-class Q {
+import * as a from "vexflow";
+import Q from "jszip";
+class tt {
   sourceMeasures = [];
   slurs = [];
   ties = [];
@@ -10,8 +10,8 @@ class Q {
     this.sourceMeasures.push(t);
   }
 }
-var $ = /* @__PURE__ */ ((e) => (e[e.Single = 0] = "Single", e[e.Double = 1] = "Double", e[e.End = 2] = "End", e[e.RepeatEnd = 3] = "RepeatEnd", e[e.RepeatBegin = 4] = "RepeatBegin", e))($ || {}), Y = /* @__PURE__ */ ((e) => (e[e.None = 0] = "None", e[e.Start = 1] = "Start", e[e.Stop = 2] = "Stop", e[e.StartStop = 3] = "StartStop", e[e.Discontinue = 4] = "Discontinue", e))(Y || {});
-class tt {
+var Y = /* @__PURE__ */ ((e) => (e[e.Single = 0] = "Single", e[e.Double = 1] = "Double", e[e.End = 2] = "End", e[e.RepeatEnd = 3] = "RepeatEnd", e[e.RepeatBegin = 4] = "RepeatBegin", e))(Y || {}), U = /* @__PURE__ */ ((e) => (e[e.None = 0] = "None", e[e.Start = 1] = "Start", e[e.Stop = 2] = "Stop", e[e.StartStop = 3] = "StartStop", e[e.Discontinue = 4] = "Discontinue", e))(U || {});
+class et {
   constructor(t) {
     this.measureNumber = t;
   }
@@ -53,7 +53,7 @@ class W {
     return new W(this.numerator, this.denominator);
   }
 }
-class et {
+class st {
   pitch;
   length;
   /** The duration type string (e.g. "whole", "half", "quarter", "eighth"). */
@@ -70,18 +70,19 @@ class et {
   tieEnds = [];
   tuplet;
   isGrace = !1;
+  isRest = !1;
   articulations = [];
   // e.g. "staccato", "accent", "fermata"
   lyrics = [];
   // Changed from single lyric
   dynamics = [];
   // e.g. "p", "f", "mf"
-  constructor(t, r, l = "quarter", a = "1", d = new W(0, 1), m = 1) {
-    this.pitch = t, this.length = r, this.durationType = l, this.voiceId = a, this.timestamp = d, this.staffId = m;
+  constructor(t, r, l = "quarter", i = "1", d = new W(0, 1), m = 1) {
+    this.pitch = t, this.length = r, this.durationType = l, this.voiceId = i, this.timestamp = d, this.staffId = m;
   }
 }
 var H = /* @__PURE__ */ ((e) => (e[e.C = 0] = "C", e[e.D = 2] = "D", e[e.E = 4] = "E", e[e.F = 5] = "F", e[e.G = 7] = "G", e[e.A = 9] = "A", e[e.B = 11] = "B", e))(H || {});
-class st {
+class Z {
   constructor(t, r, l) {
     this.step = t, this.octave = r, this.alter = l;
   }
@@ -151,155 +152,161 @@ class ut {
 }
 class ht {
   static readMusicXML(t) {
-    const l = new DOMParser().parseFromString(t, "text/xml"), a = new Q(), d = l.getElementsByTagName("part");
+    const l = new DOMParser().parseFromString(t, "text/xml"), i = new tt(), d = l.getElementsByTagName("part");
     let m = 0;
     for (let h = 0; h < d.length; h++) {
-      const A = d[h].getElementsByTagName("measure");
-      let C = 4, k = 1;
-      const L = {}, n = {};
-      let u, S, b;
-      for (let E = 0; E < A.length; E++) {
-        const O = A[E], U = parseInt(O.getAttribute("number") || "0");
-        let x;
-        a.sourceMeasures.length <= E ? (x = new tt(U), a.addMeasure(x)) : x = a.sourceMeasures[E];
-        let X = new W(0, 1);
-        const F = O.getElementsByTagName("attributes")[0];
-        if (F) {
-          const p = F.getElementsByTagName("divisions")[0];
-          p && (C = parseInt(p.textContent || "4"));
-          const N = F.getElementsByTagName("staves")[0];
-          if (N) {
-            const o = parseInt(N.textContent || "1");
-            k = Math.max(k, o);
+      const I = d[h].getElementsByTagName("measure");
+      let B = 4, V = 1;
+      const R = {}, n = {};
+      let u, N, E, b = new W(0, 1);
+      for (let O = 0; O < I.length; O++) {
+        const X = I[O], $ = parseInt(X.getAttribute("number") || "0");
+        let C;
+        i.sourceMeasures.length <= O ? (C = new et($), i.addMeasure(C)) : C = i.sourceMeasures[O];
+        const L = X.getElementsByTagName("attributes")[0];
+        if (L) {
+          const p = L.getElementsByTagName("divisions")[0];
+          p && (B = parseInt(p.textContent || "4"));
+          const v = L.getElementsByTagName("staves")[0];
+          if (v) {
+            const o = parseInt(v.textContent || "1");
+            V = Math.max(V, o);
           }
-          const v = F.getElementsByTagName("clef");
-          for (let o = 0; o < v.length; o++) {
-            const y = v[o], R = parseInt(y.getAttribute("number") || "1"), T = y.getElementsByTagName("sign")[0]?.textContent, D = parseInt(y.getElementsByTagName("line")[0]?.textContent || "0");
-            let g = K.G;
-            T === "F" && (g = K.F), T === "C" && (g = K.C);
-            const G = m + (R - 1);
-            x.clefs[G] = new nt(g, D);
+          const w = L.getElementsByTagName("clef");
+          for (let o = 0; o < w.length; o++) {
+            const g = w[o], G = parseInt(g.getAttribute("number") || "1"), T = g.getElementsByTagName("sign")[0]?.textContent, D = parseInt(g.getElementsByTagName("line")[0]?.textContent || "0");
+            let y = K.G;
+            T === "F" && (y = K.F), T === "C" && (y = K.C);
+            const P = m + (G - 1);
+            C.clefs[P] = new nt(y, D);
           }
-          const B = F.getElementsByTagName("key");
-          for (let o = 0; o < B.length; o++) {
-            const y = B[o], R = parseInt(y.getAttribute("number") || "1"), T = parseInt(y.getElementsByTagName("fifths")[0]?.textContent || "0"), D = y.getElementsByTagName("mode")[0]?.textContent || "major", g = m + (R - 1);
-            x.keys[g] = new ot(T, D);
+          const x = L.getElementsByTagName("key");
+          for (let o = 0; o < x.length; o++) {
+            const g = x[o], G = parseInt(g.getAttribute("number") || "1"), T = parseInt(g.getElementsByTagName("fifths")[0]?.textContent || "0"), D = g.getElementsByTagName("mode")[0]?.textContent || "major", y = m + (G - 1);
+            C.keys[y] = new ot(T, D);
           }
-          const V = F.getElementsByTagName("time");
-          for (let o = 0; o < V.length; o++) {
-            const y = V[o], R = parseInt(y.getAttribute("number") || "1"), T = parseInt(y.getElementsByTagName("beats")[0]?.textContent || "4"), D = parseInt(y.getElementsByTagName("beat-type")[0]?.textContent || "4"), g = m + (R - 1);
-            x.rhythms[g] = new rt(T, D);
+          const A = L.getElementsByTagName("time");
+          for (let o = 0; o < A.length; o++) {
+            const g = A[o], G = parseInt(g.getAttribute("number") || "1"), T = parseInt(g.getElementsByTagName("beats")[0]?.textContent || "4"), D = parseInt(g.getElementsByTagName("beat-type")[0]?.textContent || "4"), y = m + (G - 1);
+            C.rhythms[y] = new rt(T, D);
           }
         }
-        const q = O.getElementsByTagName("barline");
+        const q = X.getElementsByTagName("barline");
         for (let p = 0; p < q.length; p++) {
-          const N = q[p], v = N.getAttribute("location"), B = N.getElementsByTagName("ending")[0];
-          if (B) {
-            const V = B.getAttribute("number") || "", o = B.getAttribute("type") || "start";
-            x.endingNumber = V, o === "start" ? x.endingType = x.endingType === Y.Stop ? Y.StartStop : Y.Start : (o === "stop" || o === "discontinue") && (x.endingType = x.endingType === Y.Start ? Y.StartStop : Y.Stop);
+          const v = q[p], w = v.getAttribute("location"), x = v.getElementsByTagName("ending")[0];
+          if (x) {
+            const A = x.getAttribute("number") || "", o = x.getAttribute("type") || "start";
+            C.endingNumber = A, o === "start" ? C.endingType = C.endingType === U.Stop ? U.StartStop : U.Start : (o === "stop" || o === "discontinue") && (C.endingType = C.endingType === U.Start ? U.StartStop : U.Stop);
           }
-          if (v === "right" || !v) {
-            const V = N.getElementsByTagName("bar-style")[0]?.textContent, o = N.getElementsByTagName("repeat")[0];
-            o && o.getAttribute("direction") === "backward" ? x.endBarType = $.RepeatEnd : V === "light-heavy" ? x.endBarType = $.End : V === "light-light" && (x.endBarType = $.Double);
-          } else if (v === "left") {
-            const V = N.getElementsByTagName("repeat")[0];
-            V && V.getAttribute("direction") === "forward" && (x.endBarType = $.RepeatBegin);
+          if (w === "right" || !w) {
+            const A = v.getElementsByTagName("bar-style")[0]?.textContent, o = v.getElementsByTagName("repeat")[0];
+            o && o.getAttribute("direction") === "backward" ? C.endBarType = Y.RepeatEnd : A === "light-heavy" ? C.endBarType = Y.End : A === "light-light" && (C.endBarType = Y.Double);
+          } else if (w === "left") {
+            const A = v.getElementsByTagName("repeat")[0];
+            A && A.getAttribute("direction") === "forward" && (C.endBarType = Y.RepeatBegin);
           }
         }
-        const s = O.children;
+        const s = X.children;
         let c = new W(0, 1), f = [];
         for (let p = 0; p < s.length; p++) {
-          const N = s[p];
-          if (N.tagName === "direction") {
-            const v = N.getElementsByTagName("direction-type")[0];
-            if (v) {
-              const B = v.getElementsByTagName("dynamics")[0];
-              if (B)
-                for (let y = 0; y < B.children.length; y++) f.push(B.children[y].tagName);
-              const V = v.getElementsByTagName("wedge")[0];
-              if (V) {
-                const y = V.getAttribute("type");
-                y === "crescendo" || y === "diminuendo" ? (u = new lt(y === "crescendo" ? z.Crescendo : z.Diminuendo), a.wedges.push(u)) : y === "stop" && (u = void 0);
+          const v = s[p];
+          if (v.tagName === "direction") {
+            const w = v.getElementsByTagName("direction-type")[0];
+            if (w) {
+              const x = w.getElementsByTagName("dynamics")[0];
+              if (x)
+                for (let g = 0; g < x.children.length; g++) f.push(x.children[g].tagName);
+              const A = w.getElementsByTagName("wedge")[0];
+              if (A) {
+                const g = A.getAttribute("type");
+                g === "crescendo" || g === "diminuendo" ? (u = new lt(g === "crescendo" ? z.Crescendo : z.Diminuendo), i.wedges.push(u)) : g === "stop" && (u = void 0);
               }
-              const o = v.getElementsByTagName("octave-shift")[0];
+              const o = w.getElementsByTagName("octave-shift")[0];
               if (o) {
-                const y = o.getAttribute("type");
-                y === "up" || y === "down" ? (S = new ut(y === "up" ? J.Up : J.Down), a.octaveShifts.push(S)) : y === "stop" && (S = void 0);
+                const g = o.getAttribute("type");
+                g === "up" || g === "down" ? (N = new ut(g === "up" ? J.Up : J.Down), i.octaveShifts.push(N)) : g === "stop" && (N = void 0);
               }
             }
-          } else if (N.tagName === "note") {
-            const v = N.getElementsByTagName("chord").length > 0, B = N.getElementsByTagName("grace").length > 0;
-            let V = v ? c.clone() : X.clone();
-            v || (c = X.clone());
-            const o = this.parseNote(N, C, V);
+          } else if (v.tagName === "note") {
+            const w = v.getElementsByTagName("chord").length > 0, x = v.getElementsByTagName("grace").length > 0;
+            let A = w ? c.clone() : b.clone();
+            w || (c = b.clone());
+            const o = this.parseNote(v, B, A);
             if (o) {
-              o.staffId += m, o.isGrace = B, f.length > 0 && !v && (o.dynamics.push(...f), f = []), u && (u.startNote || (u.startNote = o), u.endNote = o), S && (S.startNote || (S.startNote = o), S.endNote = o);
-              const y = N.getElementsByTagName("notations")[0];
-              if (y) {
-                const T = y.getElementsByTagName("slur");
-                for (let w = 0; w < T.length; w++) {
-                  const P = T[w], j = parseInt(P.getAttribute("number") || "1");
-                  if (P.getAttribute("type") === "start") {
-                    const I = new at();
-                    I.startNote = o, o.slurStarts.push(I), L[j] = I, a.slurs.push(I);
+              o.staffId += m, o.isGrace = x, f.length > 0 && !w && (o.dynamics.push(...f), f = []), u && (u.startNote || (u.startNote = o), u.endNote = o), N && (N.startNote || (N.startNote = o), N.endNote = o);
+              const g = v.getElementsByTagName("notations")[0];
+              if (g) {
+                const T = g.getElementsByTagName("slur");
+                for (let S = 0; S < T.length; S++) {
+                  const F = T[S], j = parseInt(F.getAttribute("number") || "1");
+                  if (F.getAttribute("type") === "start") {
+                    const k = new at();
+                    k.startNote = o, o.slurStarts.push(k), R[j] = k, i.slurs.push(k);
                   } else {
-                    const I = L[j];
-                    I && (I.endNote = o, o.slurEnds.push(I), delete L[j]);
+                    const k = R[j];
+                    k && (k.endNote = o, o.slurEnds.push(k), delete R[j]);
                   }
                 }
-                const D = y.getElementsByTagName("tied");
-                for (let w = 0; w < D.length; w++) {
-                  const P = D[w], j = parseInt(P.getAttribute("number") || "1");
-                  if (P.getAttribute("type") === "start") {
-                    const I = new ct();
-                    I.startNote = o, o.tieStarts.push(I), n[j] = I, a.ties.push(I);
+                const D = g.getElementsByTagName("tied");
+                for (let S = 0; S < D.length; S++) {
+                  const F = D[S], j = parseInt(F.getAttribute("number") || "1");
+                  if (F.getAttribute("type") === "start") {
+                    const k = new ct();
+                    k.startNote = o, o.tieStarts.push(k), n[j] = k, i.ties.push(k);
                   } else {
-                    const I = n[j];
-                    I && (I.endNote = o, o.tieEnds.push(I), delete n[j]);
+                    const k = n[j];
+                    k && (k.endNote = o, o.tieEnds.push(k), delete n[j]);
                   }
                 }
-                const g = y.getElementsByTagName("tuplet")[0];
-                if (g) {
-                  if (g.getAttribute("type") === "start") {
-                    const w = N.getElementsByTagName("time-modification")[0];
-                    b = new it(
-                      parseInt(w?.getElementsByTagName("actual-notes")[0]?.textContent || "3"),
-                      parseInt(w?.getElementsByTagName("normal-notes")[0]?.textContent || "2")
+                const y = g.getElementsByTagName("tuplet")[0];
+                if (y) {
+                  if (y.getAttribute("type") === "start") {
+                    const S = v.getElementsByTagName("time-modification")[0];
+                    E = new it(
+                      parseInt(S?.getElementsByTagName("actual-notes")[0]?.textContent || "3"),
+                      parseInt(S?.getElementsByTagName("normal-notes")[0]?.textContent || "2")
                     );
                   }
-                  b && (o.tuplet = b, b.notes.push(o)), g.getAttribute("type") === "stop" && (b = void 0);
-                } else b && (o.tuplet = b, b.notes.push(o));
-                const G = y.getElementsByTagName("articulations")[0];
-                G && (G.getElementsByTagName("staccato").length > 0 && o.articulations.push("staccato"), G.getElementsByTagName("accent").length > 0 && o.articulations.push("accent"), G.getElementsByTagName("strong-accent").length > 0 && o.articulations.push("marcato"), G.getElementsByTagName("tenuto").length > 0 && o.articulations.push("tenuto")), y.getElementsByTagName("fermata").length > 0 && o.articulations.push("fermata");
+                  E && (o.tuplet = E, E.notes.push(o)), y.getAttribute("type") === "stop" && (E = void 0);
+                } else E && (o.tuplet = E, E.notes.push(o));
+                const P = g.getElementsByTagName("articulations")[0];
+                P && (P.getElementsByTagName("staccato").length > 0 && o.articulations.push("staccato"), P.getElementsByTagName("accent").length > 0 && o.articulations.push("accent"), P.getElementsByTagName("strong-accent").length > 0 && o.articulations.push("marcato"), P.getElementsByTagName("tenuto").length > 0 && o.articulations.push("tenuto")), g.getElementsByTagName("fermata").length > 0 && o.articulations.push("fermata");
               }
-              const R = N.getElementsByTagName("lyric");
-              for (let T = 0; T < R.length; T++) {
-                const D = R[T];
+              const G = v.getElementsByTagName("lyric");
+              for (let T = 0; T < G.length; T++) {
+                const D = G[T];
                 o.lyrics.push({
                   text: D.getElementsByTagName("text")[0]?.textContent || "",
                   syllabic: D.getElementsByTagName("syllabic")[0]?.textContent || "single"
                 });
               }
-              !v && !B && (X = W.Plus(X, o.length)), x.addNote(o);
+              !w && !x && (b = W.Plus(b, o.length)), C.addNote(o);
             }
-          } else if (N.tagName === "backup") {
-            const v = parseInt(N.getElementsByTagName("duration")[0]?.textContent || "0"), B = new W(v, C * 4);
-            B.numerator *= -1, X = W.Plus(X, B);
-          } else if (N.tagName === "forward") {
-            const v = parseInt(N.getElementsByTagName("duration")[0]?.textContent || "0");
-            X = W.Plus(X, new W(v, C * 4));
+          } else if (v.tagName === "backup") {
+            const w = parseInt(v.getElementsByTagName("duration")[0]?.textContent || "0"), x = new W(w, B * 4);
+            x.numerator *= -1, b = W.Plus(b, x);
+          } else if (v.tagName === "forward") {
+            const w = parseInt(v.getElementsByTagName("duration")[0]?.textContent || "0");
+            b = W.Plus(b, new W(w, B * 4));
           }
         }
       }
-      m += k;
+      m += V;
     }
-    return a;
+    return i;
   }
   static parseNote(t, r, l) {
-    const a = t.getElementsByTagName("pitch")[0];
-    if (!a) return;
-    const d = H[a.getElementsByTagName("step")[0]?.textContent] || H.C, m = parseInt(a.getElementsByTagName("octave")[0]?.textContent || "4"), h = parseInt(a.getElementsByTagName("alter")[0]?.textContent || "0"), M = t.getElementsByTagName("type")[0]?.textContent || "quarter", A = t.getElementsByTagName("voice")[0]?.textContent || "1", C = parseInt(t.getElementsByTagName("staff")[0]?.textContent || "1"), k = parseInt(t.getElementsByTagName("duration")[0]?.textContent || "1");
-    return new et(new st(d, m, h), new W(k, r * 4), M, A, l, C);
+    const i = t.getElementsByTagName("type")[0]?.textContent || "quarter", d = t.getElementsByTagName("voice")[0]?.textContent || "1", m = parseInt(t.getElementsByTagName("staff")[0]?.textContent || "1"), h = parseInt(t.getElementsByTagName("duration")[0]?.textContent || "1"), M = t.getElementsByTagName("rest")[0], I = t.getElementsByTagName("pitch")[0];
+    let B, V = !1;
+    if (M)
+      V = !0, B = new Z(H.B, 4, 0);
+    else if (I) {
+      const n = H[I.getElementsByTagName("step")[0]?.textContent] || H.C, u = parseInt(I.getElementsByTagName("octave")[0]?.textContent || "4"), N = parseInt(I.getElementsByTagName("alter")[0]?.textContent || "0");
+      B = new Z(n, u, N);
+    } else
+      return;
+    const R = new st(B, new W(h, r * 4), i, d, l, m);
+    return R.isRest = V, R;
   }
 }
 class mt {
@@ -348,12 +355,12 @@ class _ {
   }
   static format(t, r = 1e3) {
     const l = [];
-    let a = [], d = 0;
-    const m = t.musicSheet, h = /* @__PURE__ */ new Map(), M = ["treble", "bass"], A = ["4/4", "4/4"], C = ["C", "C"];
-    let k = !1;
+    let i = [], d = 0;
+    const m = t.musicSheet, h = /* @__PURE__ */ new Map(), M = ["treble", "bass"], I = ["4/4", "4/4"], B = ["C", "C"];
+    let V = !1;
     for (const n of m.sourceMeasures) {
-      let u = i.Volta.type.NONE;
-      n.endingType === Y.Start ? (u = i.Volta.type.BEGIN, k = !0) : n.endingType === Y.Stop ? (u = i.Volta.type.END, k = !1) : n.endingType === Y.StartStop ? (u = i.Volta.type.BEGIN_END, k = !1) : k && (u = i.Volta.type.MID), n.clefs.forEach((s, c) => {
+      let u = a.Volta.type.NONE;
+      n.endingType === U.Start ? (u = a.Volta.type.BEGIN, V = !0) : n.endingType === U.Stop ? (u = a.Volta.type.END, V = !1) : n.endingType === U.StartStop ? (u = a.Volta.type.BEGIN_END, V = !1) : V && (u = a.Volta.type.MID), n.clefs.forEach((s, c) => {
         if (s)
           switch (s.clefType) {
             case K.G:
@@ -369,242 +376,246 @@ class _ {
               M[c] = "treble";
           }
       }), n.rhythms.forEach((s, c) => {
-        s && (A[c] = `${s.numerator}/${s.denominator}`);
+        s && (I[c] = `${s.numerator}/${s.denominator}`);
       }), n.keys.forEach((s, c) => {
-        s && (C[c] = _.getKeySignature(s.key));
+        s && (B[c] = _.getKeySignature(s.key));
       });
-      const S = {}, b = {};
-      let E = 0;
-      n.notes.forEach((s) => E = Math.max(E, s.staffId - 1)), E = Math.max(E, n.clefs.length - 1);
-      for (let s = 0; s <= E; s++)
-        S[s] = {}, b[s] = [];
-      const O = {}, U = {};
+      const N = {}, E = {};
+      let b = 0;
+      n.notes.forEach((s) => b = Math.max(b, s.staffId - 1)), b = Math.max(b, n.clefs.length - 1);
+      for (let s = 0; s <= b; s++)
+        N[s] = {}, E[s] = [];
+      const O = {}, X = {};
       for (const s of n.notes) {
         const c = s.staffId - 1, f = s.voiceId, p = s.timestamp.RealValue;
-        O[c] || (O[c] = {}, U[c] = {}), O[c][f] || (O[c][f] = {}, U[c][f] = []), O[c][f][p] || (O[c][f][p] = [], U[c][f].push(p)), O[c][f][p].push(s);
+        O[c] || (O[c] = {}, X[c] = {}), O[c][f] || (O[c][f] = {}, X[c][f] = []), O[c][f][p] || (O[c][f][p] = [], X[c][f].push(p)), O[c][f][p].push(s);
       }
-      for (let s = 0; s <= E; s++) {
+      for (let s = 0; s <= b; s++) {
         if (!O[s]) continue;
         for (const f in O[s]) {
-          S[s][f] = [], U[s][f].sort((N, v) => N - v);
+          N[s][f] = [], X[s][f].sort((v, w) => v - w);
           let p = [];
-          for (const N of U[s][f]) {
-            const v = O[s][f][N];
-            if (v.length === 0) continue;
-            const B = v.filter((g) => !g.isGrace), V = v.filter((g) => g.isGrace);
-            if (B.length === 0) {
-              p.push(...V);
+          for (const v of X[s][f]) {
+            const w = O[s][f][v];
+            if (w.length === 0) continue;
+            const x = w.filter((y) => !y.isGrace), A = w.filter((y) => y.isGrace);
+            if (x.length === 0) {
+              p.push(...A);
               continue;
             }
-            const o = B[0], y = [];
-            for (const g of B) {
-              const G = H[g.pitch.step].toLowerCase();
-              y.push(`${G}/${g.pitch.octave}`);
-            }
-            let R = "q";
+            const o = x[0], g = [];
+            if (o.isRest)
+              g.push("b/4");
+            else
+              for (const y of x) {
+                const P = H[y.pitch.step].toLowerCase();
+                g.push(`${P}/${y.pitch.octave}`);
+              }
+            let G = "q";
             switch (o.durationType) {
               case "whole":
-                R = "w";
+                G = "w";
                 break;
               case "half":
-                R = "h";
+                G = "h";
                 break;
               case "quarter":
-                R = "q";
+                G = "q";
                 break;
               case "eighth":
-                R = "8";
+                G = "8";
                 break;
               case "16th":
-                R = "16";
+                G = "16";
                 break;
               default:
-                R = "q";
+                G = "q";
             }
-            const T = new i.StaveNote({
+            o.isRest && (G += "r");
+            const T = new a.StaveNote({
               clef: M[s] || "treble",
-              keys: y,
-              duration: R
+              keys: g,
+              duration: G
             });
-            T.sourceNote = o, B.forEach((g, G) => {
-              if (g.pitch.alter !== 0) {
-                let w = "";
-                g.pitch.alter === 1 ? w = "#" : g.pitch.alter === -1 ? w = "b" : g.pitch.alter === 2 ? w = "##" : g.pitch.alter === -2 && (w = "bb"), w && T.addModifier(new i.Accidental(w), G);
+            T.sourceNote = o, x.forEach((y, P) => {
+              if (y.pitch.alter !== 0) {
+                let S = "";
+                y.pitch.alter === 1 ? S = "#" : y.pitch.alter === -1 ? S = "b" : y.pitch.alter === 2 ? S = "##" : y.pitch.alter === -2 && (S = "bb"), S && T.addModifier(new a.Accidental(S), P);
               }
-              g.articulations.forEach((w) => {
-                let P = "";
-                if (i.Modifier.Position.ABOVE, w === "staccato" ? (P = "a.", i.Modifier.Position.BELOW) : w === "accent" ? P = "a>" : w === "marcato" ? P = "a^" : w === "tenuto" ? P = "a-" : w === "fermata" && (P = "a@a"), P) {
-                  const j = new i.Articulation(P);
-                  T.addModifier(j, G);
+              y.articulations.forEach((S) => {
+                let F = "";
+                if (a.Modifier.Position.ABOVE, S === "staccato" ? (F = "a.", a.Modifier.Position.BELOW) : S === "accent" ? F = "a>" : S === "marcato" ? F = "a^" : S === "tenuto" ? F = "a-" : S === "fermata" && (F = "a@a"), F) {
+                  const j = new a.Articulation(F);
+                  T.addModifier(j, P);
                 }
-              }), g.dynamics && g.dynamics.length > 0 && g.dynamics.forEach((w) => {
-                const P = new i.Annotation(w).setFont("Times", 12, "italic").setVerticalJustification(i.Annotation.VerticalJustify.BOTTOM);
-                T.addModifier(P, G);
+              }), y.dynamics && y.dynamics.length > 0 && y.dynamics.forEach((S) => {
+                const F = new a.Annotation(S).setFont("Times", 12, "italic").setVerticalJustification(a.Annotation.VerticalJustify.BOTTOM);
+                T.addModifier(F, P);
               });
-            }), o.lyrics && o.lyrics.length > 0 && o.lyrics.forEach((g) => {
-              const G = g.text + (g.syllabic === "begin" || g.syllabic === "middle" ? "-" : ""), w = new i.Annotation(G).setFont("Times", 12, "normal").setVerticalJustification(i.Annotation.VerticalJustify.BOTTOM);
-              T.addModifier(w, 0);
+            }), o.lyrics && o.lyrics.length > 0 && o.lyrics.forEach((y) => {
+              const P = y.text + (y.syllabic === "begin" || y.syllabic === "middle" ? "-" : ""), S = new a.Annotation(P).setFont("Times", 12, "normal").setVerticalJustification(a.Annotation.VerticalJustify.BOTTOM);
+              T.addModifier(S, 0);
             });
-            const D = [...p, ...V];
+            const D = [...p, ...A];
             if (D.length > 0) {
-              const g = D.map((w) => {
-                const P = H[w.pitch.step].toLowerCase(), j = new i.GraceNote({
-                  keys: [`${P}/${w.pitch.octave}`],
+              const y = D.map((S) => {
+                const F = H[S.pitch.step].toLowerCase(), j = new a.GraceNote({
+                  keys: [`${F}/${S.pitch.octave}`],
                   duration: "8",
                   slash: !0
                 });
-                if (w.pitch.alter !== 0) {
-                  let I = "";
-                  w.pitch.alter === 1 ? I = "#" : w.pitch.alter === -1 && (I = "b"), I && j.addModifier(new i.Accidental(I), 0);
+                if (S.pitch.alter !== 0) {
+                  let k = "";
+                  S.pitch.alter === 1 ? k = "#" : S.pitch.alter === -1 && (k = "b"), k && j.addModifier(new a.Accidental(k), 0);
                 }
                 return j;
-              }), G = new i.GraceNoteGroup(g);
-              T.addModifier(G, 0), p = [];
+              }), P = new a.GraceNoteGroup(y);
+              T.addModifier(P, 0), p = [];
             }
-            f === "1" ? T.setStemDirection(i.Stem.UP) : T.setStemDirection(i.Stem.DOWN), S[s][f].push(T);
-            for (const g of v)
-              h.set(g, T);
+            f === "1" ? T.setStemDirection(a.Stem.UP) : T.setStemDirection(a.Stem.DOWN), N[s][f].push(T);
+            for (const y of w)
+              h.set(y, T);
           }
         }
         const c = /* @__PURE__ */ new Set();
         for (const f of n.notes)
           if (f.staffId - 1 === s && f.tuplet && !c.has(f.tuplet)) {
-            const p = f.tuplet, N = p.notes.map((v) => h.get(v)).filter((v, B, V) => v && V.indexOf(v) === B);
-            if (N.length > 0) {
-              const v = new i.Tuplet(N, {
+            const p = f.tuplet, v = p.notes.map((w) => h.get(w)).filter((w, x, A) => w && A.indexOf(w) === x);
+            if (v.length > 0) {
+              const w = new a.Tuplet(v, {
                 numNotes: p.actualNotes,
                 notesOccupied: p.normalNotes
               });
-              b[s].push(v);
+              E[s].push(w);
             }
             c.add(p);
           }
       }
-      let x = 150;
-      for (let s = 0; s <= E; s++) {
+      let $ = 150;
+      for (let s = 0; s <= b; s++) {
         const c = [];
-        for (const f in S[s]) {
-          const p = new i.Voice({ numBeats: 4, beatValue: 4 });
-          p.addTickables(S[s][f]), c.push(p);
+        for (const f in N[s]) {
+          const p = new a.Voice({ numBeats: 4, beatValue: 4 });
+          p.addTickables(N[s][f]), c.push(p);
         }
         if (c.length > 0)
           try {
-            const p = new i.Formatter().joinVoices(c).preCalculateMinTotalWidth(c);
-            let N = 20;
-            (n.clefs[s] || n.measureNumber === 1) && (N += 40), (n.rhythms[s] || n.measureNumber === 1) && (N += 30), n.keys[s] && (N += 20), x = Math.max(x, p + N);
+            const p = new a.Formatter().joinVoices(c).preCalculateMinTotalWidth(c);
+            let v = 20;
+            (n.clefs[s] || n.measureNumber === 1) && (v += 40), (n.rhythms[s] || n.measureNumber === 1) && (v += 30), n.keys[s] && (v += 20), $ = Math.max($, p + v);
           } catch {
           }
       }
-      const X = [];
-      for (let s = 0; s <= E; s++) {
+      const C = [];
+      for (let s = 0; s <= b; s++) {
         const c = [];
-        for (const f in S[s]) {
-          const p = i.Beam.generateBeams(S[s][f]);
+        for (const f in N[s]) {
+          const p = a.Beam.generateBeams(N[s][f]);
           c.push(...p);
         }
-        X.push({
-          vfVoices: S[s],
+        C.push({
+          vfVoices: N[s],
           beams: c,
-          vfTuplets: b[s],
+          vfTuplets: E[s],
           clef: n.clefs[s] ? M[s] : void 0,
-          keySignature: n.keys[s] || n.measureNumber === 1 ? C[s] : void 0,
+          keySignature: n.keys[s] || n.measureNumber === 1 ? B[s] : void 0,
           // Draw if explicit or start
-          timeSignature: n.rhythms[s] ? A[s] : void 0,
-          voltaType: s === 0 ? u : i.Volta.type.NONE,
+          timeSignature: n.rhythms[s] ? I[s] : void 0,
+          voltaType: s === 0 ? u : a.Volta.type.NONE,
           voltaNumber: s === 0 ? n.endingNumber : ""
         });
       }
-      let F;
+      let L;
       if (n.endBarType !== void 0)
         switch (n.endBarType) {
-          case $.Single:
-            F = i.Barline.type.SINGLE;
+          case Y.Single:
+            L = a.Barline.type.SINGLE;
             break;
-          case $.Double:
-            F = i.Barline.type.DOUBLE;
+          case Y.Double:
+            L = a.Barline.type.DOUBLE;
             break;
-          case $.End:
-            F = i.Barline.type.END;
+          case Y.End:
+            L = a.Barline.type.END;
             break;
-          case $.RepeatEnd:
-            F = i.Barline.type.REPEAT_END;
+          case Y.RepeatEnd:
+            L = a.Barline.type.REPEAT_END;
             break;
-          case $.RepeatBegin:
-            F = i.Barline.type.REPEAT_BEGIN;
+          case Y.RepeatBegin:
+            L = a.Barline.type.REPEAT_BEGIN;
             break;
           default:
-            F = i.Barline.type.SINGLE;
+            L = a.Barline.type.SINGLE;
         }
       const q = {
         measureNumber: n.measureNumber,
-        staves: X,
+        staves: C,
         // New structure
-        width: x,
-        endBarLineType: F
+        width: $,
+        endBarLineType: L
       };
-      if (d + q.width > r && a.length > 0) {
-        const c = (r - d) / a.length;
-        a.forEach((f) => f.width += c), l.push(a), a = [], d = 0;
+      if (d + q.width > r && i.length > 0) {
+        const c = (r - d) / i.length;
+        i.forEach((f) => f.width += c), l.push(i), i = [], d = 0;
       }
-      a.push(q), d += q.width;
+      i.push(q), d += q.width;
     }
-    a.length > 0 && l.push(a);
-    const L = [];
+    i.length > 0 && l.push(i);
+    const R = [];
     for (const n of m.slurs)
       if (n.startNote && n.endNote) {
-        const u = h.get(n.startNote), S = h.get(n.endNote);
-        if (u && S) {
-          const b = new i.Curve(u, S, {
+        const u = h.get(n.startNote), N = h.get(n.endNote);
+        if (u && N) {
+          const E = new a.Curve(u, N, {
             thickness: 2,
             xShift: 0,
             yShift: 10
           });
-          L.push(b);
+          R.push(E);
         }
       }
     for (const n of m.ties)
       if (n.startNote && n.endNote) {
-        const u = h.get(n.startNote), S = h.get(n.endNote);
-        if (u && S) {
-          const b = new i.StaveTie({
+        const u = h.get(n.startNote), N = h.get(n.endNote);
+        if (u && N) {
+          const E = new a.StaveTie({
             firstNote: u,
-            lastNote: S,
+            lastNote: N,
             firstIndexes: [0],
             lastIndexes: [0]
           });
-          L.push(b);
+          R.push(E);
         }
       }
     for (const n of m.wedges)
       if (n.startNote && n.endNote) {
-        const u = h.get(n.startNote), S = h.get(n.endNote);
-        if (u && S) {
-          const b = new i.StaveHairpin(
-            { firstNote: u, lastNote: S },
-            n.type === z.Crescendo ? i.StaveHairpin.type.CRESC : i.StaveHairpin.type.DECRESC
+        const u = h.get(n.startNote), N = h.get(n.endNote);
+        if (u && N) {
+          const E = new a.StaveHairpin(
+            { firstNote: u, lastNote: N },
+            n.type === z.Crescendo ? a.StaveHairpin.type.CRESC : a.StaveHairpin.type.DECRESC
           );
-          b.setPosition(i.Modifier.Position.BELOW), L.push(b);
+          E.setPosition(a.Modifier.Position.BELOW), R.push(E);
         }
       }
     for (const n of m.octaveShifts)
       if (n.startNote && n.endNote) {
-        const u = h.get(n.startNote), S = h.get(n.endNote);
-        if (u && S) {
-          const b = n.type === J.Up ? "8va" : "8vb", E = n.type === J.Up ? i.TextBracket.Position.TOP : i.TextBracket.Position.BOTTOM, O = new i.TextBracket({
+        const u = h.get(n.startNote), N = h.get(n.endNote);
+        if (u && N) {
+          const E = n.type === J.Up ? "8va" : "8vb", b = n.type === J.Up ? a.TextBracket.Position.TOP : a.TextBracket.Position.BOTTOM, O = new a.TextBracket({
             start: u,
-            stop: S,
-            text: b,
-            position: E
+            stop: N,
+            text: E,
+            position: b
           });
-          L.push(O);
+          R.push(O);
         }
       }
-    return { systems: l, curves: L };
+    return { systems: l, curves: R };
   }
 }
 class ft {
   constructor(t) {
-    this.container = t, this.renderer = new i.Renderer(t, i.Renderer.Backends.SVG), this.ctx = this.renderer.getContext();
+    this.container = t, this.renderer = new a.Renderer(t, a.Renderer.Backends.SVG), this.ctx = this.renderer.getContext();
   }
   container;
   renderer;
@@ -612,49 +623,49 @@ class ft {
   draw(t) {
     const { systems: r, curves: l } = t;
     this.ctx.clear();
-    const a = 10;
-    let d = a, m = 50;
+    const i = 10;
+    let d = i, m = 50;
     const h = /* @__PURE__ */ new Map();
     for (const M of r) {
-      const A = this.calculateSystemLayout(M);
-      let C = 0;
-      d = a;
-      for (const k of M) {
-        const L = k.staves, n = [];
-        if (L.forEach((u, S) => {
-          const b = m + A[S], E = new i.Stave(d, b, k.width);
-          if ((u.clef || d === a) && E.addClef(u.clef || "treble"), u.keySignature && E.addKeySignature(u.keySignature), u.timeSignature && E.addTimeSignature(u.timeSignature), k.endBarLineType !== void 0 && E.setEndBarType(k.endBarLineType), u.voltaType !== void 0 && u.voltaType !== i.Volta.type.NONE && E.setVoltaType(u.voltaType, u.voltaNumber || "1", 0), E.setContext(this.ctx).draw(), n.push(E), Object.keys(u.vfVoices || {}).length > 0) {
-            const { voices: U, allNotes: x } = this.createVoices(u);
-            new i.Formatter().joinVoices(U).format(U, k.width - 50), U.forEach((c) => c.draw(this.ctx, E));
-            const X = E.getYForTopText(0) || b, q = (E.getYForBottomText(0) || b + 100) - X;
-            x.forEach((c) => {
+      const I = this.calculateSystemLayout(M);
+      let B = 0;
+      d = i;
+      for (const V of M) {
+        const R = V.staves, n = [];
+        if (R.forEach((u, N) => {
+          const E = m + I[N], b = new a.Stave(d, E, V.width);
+          if ((u.clef || d === i) && b.addClef(u.clef || "treble"), u.keySignature && b.addKeySignature(u.keySignature), u.timeSignature && b.addTimeSignature(u.timeSignature), V.endBarLineType !== void 0 && b.setEndBarType(V.endBarLineType), u.voltaType !== void 0 && u.voltaType !== a.Volta.type.NONE && b.setVoltaType(u.voltaType, u.voltaNumber || "1", 0), b.setContext(this.ctx).draw(), n.push(b), Object.keys(u.vfVoices || {}).length > 0) {
+            const { voices: X, allNotes: $ } = this.createVoices(u);
+            new a.Formatter().joinVoices(X).format(X, V.width - 50), X.forEach((c) => c.draw(this.ctx, b));
+            const C = b.getYForLine(0), q = b.getYForLine(4) - C;
+            $.forEach((c) => {
               if (c.sourceNote) {
                 const f = c.sourceNote.timestamp.RealValue, p = c.getBoundingBox();
                 p && (h.has(f) || h.set(f, []), h.get(f).push({
                   x: p.getX(),
-                  y: X,
+                  y: C,
                   height: q
                 }));
               }
             }), u.beams && u.beams.forEach((c) => c.setContext(this.ctx).draw()), u.vfTuplets && u.vfTuplets.forEach((c) => c.setContext(this.ctx).draw());
-            let s = b + 100;
-            x.forEach((c) => {
+            let s = E + 100;
+            $.forEach((c) => {
               const f = c.getBoundingBox();
               f && (s = Math.max(s, f.getY() + f.getH())), c.getModifiers().forEach((p) => {
-                p.text_line && (s = Math.max(s, b + 140));
+                p.text_line && (s = Math.max(s, E + 140));
               });
-            }), C = Math.max(C, s);
+            }), B = Math.max(B, s);
           } else
-            C = Math.max(C, b + 100);
-        }), n.length > 1 && d === a) {
-          const u = new i.StaveConnector(n[0], n[n.length - 1]);
-          u.setType(i.StaveConnector.type.BRACE), u.setContext(this.ctx).draw();
-          const S = new i.StaveConnector(n[0], n[n.length - 1]);
-          S.setType(i.StaveConnector.type.SINGLE_LEFT), S.setContext(this.ctx).draw();
+            B = Math.max(B, E + 100);
+        }), n.length > 1 && d === i) {
+          const u = new a.StaveConnector(n[0], n[n.length - 1]);
+          u.setType(a.StaveConnector.type.BRACE), u.setContext(this.ctx).draw();
+          const N = new a.StaveConnector(n[0], n[n.length - 1]);
+          N.setType(a.StaveConnector.type.SINGLE_LEFT), N.setContext(this.ctx).draw();
         }
-        d += k.width;
+        d += V.width;
       }
-      m = C + 60;
+      m = B + 60;
     }
     return l && l.forEach((M) => M.setContext(this.ctx).draw()), this.renderer.resize && this.renderer.resize(this.container.clientWidth, m + 100), h;
   }
@@ -664,14 +675,14 @@ class ft {
   calculateSystemLayout(t) {
     if (t.length === 0) return [];
     const r = t[0].staves.length, l = [0];
-    let a = 0;
+    let i = 0;
     for (let d = 0; d < r - 1; d++) {
-      let m = 100;
+      let m = 80;
       for (const h of t) {
-        const M = h.staves[d], A = h.staves[d + 1], C = this.measureStaffBottom(M, h.width), k = this.measureStaffTop(A, h.width), n = C - k + 40;
+        const M = h.staves[d], I = h.staves[d + 1], B = this.measureStaffBottom(M, h.width), V = this.measureStaffTop(I, h.width), n = B - V + 10;
         m = Math.max(m, n);
       }
-      a += m, l.push(a);
+      i += m, l.push(i);
     }
     return l;
   }
@@ -679,23 +690,23 @@ class ft {
     let l = 80;
     if (Object.keys(t.vfVoices || {}).length === 0) return l;
     const { voices: d, allNotes: m } = this.createVoices(t);
-    return new i.Stave(0, 0, r), new i.Formatter().joinVoices(d).format(d, r - 50), m.forEach((h) => {
-      h.keys.forEach((A, C) => {
-        const L = h.getKeyProps()[C].line * 10;
-        l = Math.max(l, L + 20);
-      }), h.modifiers.some((A) => A.category === "annotation") && (l += 30);
+    return new a.Stave(0, 0, r), new a.Formatter().joinVoices(d).format(d, r - 50), m.forEach((h) => {
+      h.keys.forEach((I, B) => {
+        const R = h.getKeyProps()[B].line * 10;
+        l = Math.max(l, R + 20);
+      }), h.modifiers.some((I) => I.category === "annotation") && (l += 30);
     }), l;
   }
   measureStaffTop(t, r) {
     let l = 0;
-    const a = Object.keys(t.vfVoices || {});
-    if (a.length === 0) return l;
+    const i = Object.keys(t.vfVoices || {});
+    if (i.length === 0) return l;
     const d = [];
-    for (const m of a) d.push(...t.vfVoices[m]);
+    for (const m of i) d.push(...t.vfVoices[m]);
     return d.forEach((m) => {
       m.keys.forEach((h, M) => {
-        const C = m.getKeyProps()[M].line * 10;
-        l = Math.min(l, C - 20);
+        const B = m.getKeyProps()[M].line * 10;
+        l = Math.min(l, B - 20);
       });
     }), l;
   }
@@ -705,23 +716,23 @@ class ft {
       const h = t.timeSignature.split("/");
       r = parseInt(h[0]), l = parseInt(h[1]);
     }
-    const a = [];
+    const i = [];
     let d = [];
     const m = Object.keys(t.vfVoices || {});
     for (const h of m) {
-      const M = t.vfVoices[h], A = new i.Voice({ numBeats: r, beatValue: l });
-      A.setStrict(!1), A.addTickables(M), a.push(A), d.push(...M);
+      const M = t.vfVoices[h], I = new a.Voice({ numBeats: r, beatValue: l });
+      I.setStrict(!1), I.addTickables(M), i.push(I), d.push(...M);
     }
-    return { voices: a, allNotes: d };
+    return { voices: i, allNotes: d };
   }
 }
 class dt {
   static async MXLtoXML(t) {
-    const r = new Z();
+    const r = new Q();
     try {
-      const l = await r.loadAsync(t), a = Object.keys(l.files);
-      let d = "META-INF/container.xml", m = a.find((h) => h.endsWith(".xml") && !h.includes("container.xml") && !h.startsWith("__MACOSX"));
-      if (m || (m = a.find((h) => h.endsWith(".musicxml") && !h.startsWith("__MACOSX"))), m)
+      const l = await r.loadAsync(t), i = Object.keys(l.files);
+      let d = "META-INF/container.xml", m = i.find((h) => h.endsWith(".xml") && !h.includes("container.xml") && !h.startsWith("__MACOSX"));
+      if (m || (m = i.find((h) => h.endsWith(".musicxml") && !h.startsWith("__MACOSX"))), m)
         return await l.file(m)?.async("string") || "";
       throw new Error("No MusicXML file found in MXL.");
     } catch (l) {
@@ -739,6 +750,9 @@ class pt {
   timestampMap = /* @__PURE__ */ new Map();
   timestamps = [];
   currentIndex = 0;
+  get hidden() {
+    return this.cursorElement.style.display === "none";
+  }
   init(t) {
     this.timestampMap = t, this.timestamps = Array.from(t.keys()).sort((r, l) => r - l), this.currentIndex = 0, this.hide();
   }
@@ -761,10 +775,10 @@ class pt {
     if (this.timestamps.length === 0) return;
     const t = this.timestamps[this.currentIndex], r = this.timestampMap.get(t);
     if (r && r.length > 0) {
-      let l = r[0].y, a = r[0].y + r[0].height, d = r[0].x;
+      let l = r[0].y, i = r[0].y + r[0].height, d = r[0].x;
       r.forEach((m) => {
-        l = Math.min(l, m.y), a = Math.max(a, m.y + m.height), d = Math.min(d, m.x);
-      }), this.cursorElement.style.left = `${d}px`, this.cursorElement.style.top = `${l}px`, this.cursorElement.style.height = `${a - l}px`;
+        l = Math.min(l, m.y), i = Math.max(i, m.y + m.height), d = Math.min(d, m.x);
+      }), this.cursorElement.style.left = `${d}px`, this.cursorElement.style.top = `${l}px`, this.cursorElement.style.height = `${i - l}px`;
     }
   }
 }
@@ -790,10 +804,10 @@ class yt {
   async load(t) {
     return new Promise(async (r, l) => {
       try {
-        let a = "";
-        typeof t == "string" ? (t.startsWith("PK"), a = t) : a = await dt.MXLtoXML(t), this.sheet = ht.readMusicXML(a), r();
-      } catch (a) {
-        l(a);
+        let i = "";
+        typeof t == "string" ? (t.startsWith("PK"), i = t) : i = await dt.MXLtoXML(t), this.sheet = ht.readMusicXML(i), r();
+      } catch (i) {
+        l(i);
       }
     });
   }
@@ -811,7 +825,7 @@ class yt {
   }
 }
 export {
-  Q as MusicSheet,
+  tt as MusicSheet,
   yt as OpenSheetMusicDisplay,
   ft as VexFlowMusicSheetDrawer
 };

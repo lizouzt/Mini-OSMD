@@ -74,8 +74,8 @@ export class VexFlowMusicSheetDrawer {
                         voices.forEach((v: any) => v.draw(this.ctx, stave));
                         
                         // Collect Cursor Positions
-                        const staveTop = stave.getY();
-                        const staveBot = stave.getY() + stave.getHeight();
+                        const staveTop = stave.getTopLineTopY();
+                        const staveBot = stave.getBottomLineBottomY();
                         const staveHeight = staveBot - staveTop;
 
                         allNotes.forEach((note: any) => {
@@ -84,7 +84,6 @@ export class VexFlowMusicSheetDrawer {
                                 const bbox = note.getBoundingBox(); // Valid after draw/format? Note must be drawn for absolute x?
                                 // VexFlow note x is set by formatter. Absolute X needs Stave X.
                                 // If note.draw() was called, note.getBoundingBox() should returns absolute coords in SVG context.
-                                
                                 if (bbox) {
                                     if (!cursorPositions.has(ts)) cursorPositions.set(ts, []);
                                     cursorPositions.get(ts)!.push({
@@ -92,6 +91,7 @@ export class VexFlowMusicSheetDrawer {
                                         y: staveTop,
                                         height: staveHeight
                                     });
+                                    console.log(`Cursor Pos - TS: ${ts}, X: ${bbox.getX()}, Y: ${staveTop}, Height: ${staveHeight}`);
                                 }
                             }
                         });
@@ -161,7 +161,7 @@ export class VexFlowMusicSheetDrawer {
         let currentOffset = 0;
 
         for (let i = 0; i < numStaves - 1; i++) {
-            let maxRequiredDistance = 100; 
+            let maxRequiredDistance = 80; 
 
             for (const measure of system) {
                 const upperStaff = measure.staves[i];
@@ -170,7 +170,7 @@ export class VexFlowMusicSheetDrawer {
                 const upperBottom = this.measureStaffBottom(upperStaff, measure.width);
                 const lowerTop = this.measureStaffTop(lowerStaff, measure.width);
 
-                const padding = 40;
+                const padding = 10;
                 const distance = upperBottom - lowerTop + padding;
                 
                 maxRequiredDistance = Math.max(maxRequiredDistance, distance);

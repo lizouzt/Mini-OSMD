@@ -5,6 +5,7 @@ export declare class Cursor {
     private timestampMap;
     private timestamps;
     private currentIndex;
+    get hidden(): boolean;
     init(timestampMap: Map<number, {
         x: number;
         y: number;

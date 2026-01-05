@@ -36,6 +36,8 @@ export class MusicSheetReader {
             let activeOctaveShift: OctaveShift | undefined = undefined;
             let activeTuplet: Tuplet | undefined = undefined;
 
+            let cursor = new Fraction(0, 1);
+
             for (let i = 0; i < measures.length; i++) {
                 const xmlMeasure = measures[i];
                 const measureNumber = parseInt(xmlMeasure.getAttribute("number") || "0");
@@ -50,8 +52,6 @@ export class MusicSheetReader {
                 } else {
                     measure = sheet.sourceMeasures[i];
                 }
-
-                let cursor = new Fraction(0, 1);
 
                 // Parse Attributes
                 const attributes = xmlMeasure.getElementsByTagName("attributes")[0];
