@@ -6,7 +6,15 @@
     <title>Mini-OSMD Test</title>
 </head>
 <body>
+    <div id="controls">
+      <label for="score-selector">Select Score:</label>
+      <select id="score-selector">
+        <option value="builtin">Built-in Test (Ultimate)</option>
+        <option value="Beethoven_AnDieFerneGeliebte.xml">Beethoven: An die ferne Geliebte</option>
+        <option value="BrahWiMeSample.musicxml">Brahms: Wie Melodien zieht es mir</option>
+      </select>
+    </div>
     <div id="osmd-container"></div>
-    <script type="module" src="/src/index.ts"></script>
+    <script type="module" src="/demo/main.ts"></script>
 </body>
 </html>
