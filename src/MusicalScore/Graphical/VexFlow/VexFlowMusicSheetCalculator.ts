@@ -211,11 +211,10 @@ export class VexFlowMusicSheetCalculator {
                             // Add Dynamics
                             if (n.dynamics && n.dynamics.length > 0) {
                                 n.dynamics.forEach(dyn => {
-                                    const vfDyn = new VF.TextDynamics({
-                                        text: dyn,
-                                        duration: "q" // Duration doesn't matter much for TextDynamics attached to note
-                                    });
-                                    vfNote.addModifier(vfDyn as any, index);
+                                    const annotation = new VF.Annotation(dyn)
+                                        .setFont("Times", 12, "italic")
+                                        .setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
+                                    vfNote.addModifier(annotation, index);
                                 });
                             }
                         });

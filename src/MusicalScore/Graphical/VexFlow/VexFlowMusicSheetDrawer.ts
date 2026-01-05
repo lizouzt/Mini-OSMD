@@ -2,10 +2,12 @@ import * as VF from "vexflow";
 
 export class VexFlowMusicSheetDrawer {
     constructor(container: HTMLElement) {
+        this.container = container;
         this.renderer = new VF.Renderer(container as HTMLDivElement, VF.Renderer.Backends.SVG);
         this.ctx = this.renderer.getContext();
     }
 
+    private container: HTMLElement;
     private renderer: any;
     private ctx: any;
 
@@ -143,7 +145,7 @@ export class VexFlowMusicSheetDrawer {
         }
         
         if (this.renderer.resize) {
-            this.renderer.resize(this.renderer.element.clientWidth, y + 100);
+            this.renderer.resize(this.container.clientWidth, y + 100);
         }
 
         return cursorPositions;
@@ -237,6 +239,7 @@ export class VexFlowMusicSheetDrawer {
         for (const vid of voiceIds) {
             const notes = staffData.vfVoices[vid];
             const voice = new VF.Voice({ numBeats: numBeats, beatValue: beatValue });
+            voice.setStrict(false);
             voice.addTickables(notes);
             voices.push(voice);
             allNotes.push(...notes);
