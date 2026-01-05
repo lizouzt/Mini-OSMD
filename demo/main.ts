@@ -1,4 +1,8 @@
 import { OpenSheetMusicDisplay } from "../src/index";
+// @ts-ignore
+import beethovenUrl from '../public/demo/Beethoven_AnDieFerneGeliebte.xml?url';
+// @ts-ignore
+import brahmsUrl from '../public/demo/BrahWiMeSample.musicxml?url';
 
 const builtInXML = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
@@ -68,47 +72,107 @@ const builtInXML = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 
 const container = document.getElementById("osmd-container");
 const selectElement = document.getElementById("score-selector") as HTMLSelectElement;
+const zoomInBtn = document.getElementById("zoom-in-btn");
+const zoomOutBtn = document.getElementById("zoom-out-btn");
+const zoomLevelSpan = document.getElementById("zoom-level");
+const cursorPrevBtn = document.getElementById("cursor-prev-btn");
+const cursorNextBtn = document.getElementById("cursor-next-btn");
+const cursorShowBtn = document.getElementById("cursor-show-btn");
 
 if (container && selectElement) {
     const osmd = new OpenSheetMusicDisplay(container);
+    let currentZoom = 1.0;
+
+    const scores = [
+        { name: "Built-in Test (Ultimate)", value: "builtin", url: "" },
+        { name: "Beethoven: An die ferne Geliebte", value: "beethoven", url: beethovenUrl },
+        { name: "Brahms: Wie Melodien zieht es mir", value: "brahms", url: brahmsUrl }
+    ];
+
+    scores.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.value;
+        opt.innerText = s.name;
+        selectElement.appendChild(opt);
+    });
 
     const loadScore = async (value: string) => {
         try {
+            // Reset Zoom
+            currentZoom = 1.0;
+            updateZoom();
+            container.innerHTML = ""; // Clear previous
+
             console.log(`Loading: ${value}`);
             let xmlContent = "";
             
             if (value === "builtin") {
                 xmlContent = builtInXML;
             } else {
-                const response = await fetch(`./demo/${value}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to load ${value}: ${response.statusText}`);
+                const score = scores.find(s => s.value === value);
+                if (score && score.url) {
+                   // In dev, url is file path. In prod, might need fetch.
+                   // Vite ?url import returns the URL string.
+                   const response = await fetch(score.url);
+                   if (!response.ok) throw new Error(`Failed to fetch ${score.url}`);
+                   xmlContent = await response.text();
                 }
-                xmlContent = await response.text();
             }
             
             await osmd.load(xmlContent);
             osmd.render();
-            console.log("Render finished.");
         } catch (e) {
             console.error("Error loading score:", e);
         }
     };
 
-    // Initial load
-    loadScore(selectElement.value);
+    const updateZoom = () => {
+        if (zoomLevelSpan) zoomLevelSpan.innerText = `${Math.round(currentZoom * 100)}%`;
+        // Apply CSS Zoom to the SVG element inside container
+        const svg = container.querySelector("svg");
+        if (svg) {
+            svg.style.transform = `scale(${currentZoom})`;
+            svg.style.transformOrigin = "top left";
+            // Adjust container height/width if needed? 
+            // SVG usually scales within its viewbox if width is set, but here we force scale.
+            // Better: Set width on SVG?
+            // Simple CSS scale is enough for demo.
+        }
+    };
 
-    // Event listeners
+    // Events
     selectElement.addEventListener("change", (e) => {
         const target = e.target as HTMLSelectElement;
         loadScore(target.value);
     });
 
-    window.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowRight") {
-            osmd.cursor.next();
-        } else if (e.key === "ArrowLeft") {
-            osmd.cursor.prev();
+    zoomInBtn?.addEventListener("click", () => {
+        currentZoom += 0.1;
+        updateZoom();
+    });
+
+    zoomOutBtn?.addEventListener("click", () => {
+        currentZoom = Math.max(0.1, currentZoom - 0.1);
+        updateZoom();
+    });
+
+    cursorNextBtn?.addEventListener("click", () => osmd.cursor.next());
+    cursorPrevBtn?.addEventListener("click", () => osmd.cursor.prev());
+    cursorShowBtn?.addEventListener("click", () => {
+        if (osmd.cursor.hidden) {
+            osmd.cursor.show();
+            cursorShowBtn.innerText = "Hide Cursor";
+        } else {
+            osmd.cursor.hide();
+            cursorShowBtn.innerText = "Show Cursor";
         }
     });
+
+    window.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") osmd.cursor.next();
+        if (e.key === "ArrowLeft") osmd.cursor.prev();
+    });
+
+    // Initial load
+    loadScore("builtin");
 }

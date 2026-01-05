@@ -7,4 +7,5 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['test/**/*.{test,spec}.ts', 'src/**/*.{test,spec}.ts'],
   },
+  base: './',
 });

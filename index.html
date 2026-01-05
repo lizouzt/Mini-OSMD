@@ -3,18 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini-OSMD Test</title>
+    <title>Mini-OSMD Demo</title>
+    <link rel="stylesheet" href="./demo/style.css">
 </head>
 <body>
-    <div id="controls">
-      <label for="score-selector">Select Score:</label>
-      <select id="score-selector">
-        <option value="builtin">Built-in Test (Ultimate)</option>
-        <option value="Beethoven_AnDieFerneGeliebte.xml">Beethoven: An die ferne Geliebte</option>
-        <option value="BrahWiMeSample.musicxml">Brahms: Wie Melodien zieht es mir</option>
-      </select>
-    </div>
-    <div id="osmd-container"></div>
+    <header>
+        <div class="title-bar">
+            <h1>Mini-OSMD</h1>
+            <span class="subtitle">Lightweight MusicXML Renderer</span>
+        </div>
+        <div class="controls">
+            <div class="control-group">
+                <select id="score-selector"></select>
+            </div>
+            <div class="control-group">
+                <button id="zoom-out-btn" class="icon-btn" title="Zoom Out">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13H5v-2h14v2z"/></svg>
+                </button>
+                <span id="zoom-level">100%</span>
+                <button id="zoom-in-btn" class="icon-btn" title="Zoom In">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                </button>
+            </div>
+            <div class="control-group">
+                <button id="cursor-prev-btn" class="icon-btn" title="Previous">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <button id="cursor-next-btn" class="icon-btn" title="Next">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </button>
+                <button id="cursor-show-btn" title="Toggle Cursor">Hide Cursor</button>
+            </div>
+        </div>
+    </header>
+    <main id="osmd-container"></main>
     <script type="module" src="/demo/main.ts"></script>
 </body>
 </html>

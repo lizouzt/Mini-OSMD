@@ -12,13 +12,15 @@
     "build": "tsc && vite build",
     "build:lib": "tsc && vite build -c vite.lib.config.ts",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "deploy": "gh-pages -d dist"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "gh-pages": "^6.3.0",
     "jsdom": "^27.0.1",
     "typescript": "^5.9.3",
     "vexflow": "^5.0.0",
