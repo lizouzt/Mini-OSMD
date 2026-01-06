@@ -388,6 +388,33 @@ export class VexFlowMusicSheetCalculator {
             systems.push(currentSystem);
         }
 
+        // Build Maps for System tracking
+        const vfNoteToSystem = new Map<any, number>();
+        const systemStaffFirstLast = new Map<number, Map<number, { first: any, last: any }>>();
+
+        systems.forEach((system, sysIdx) => {
+            if (!systemStaffFirstLast.has(sysIdx)) systemStaffFirstLast.set(sysIdx, new Map());
+            
+            system.forEach(measureData => {
+                measureData.staves.forEach((staffData: any, staffIdx: number) => {
+                    const voiceIds = Object.keys(staffData.vfVoices || {});
+                    const notes: any[] = [];
+                    voiceIds.forEach(vid => notes.push(...staffData.vfVoices[vid]));
+                    
+                    if (notes.length > 0) {
+                        notes.forEach(n => vfNoteToSystem.set(n, sysIdx));
+                        
+                        const sysMap = systemStaffFirstLast.get(sysIdx)!;
+                        if (!sysMap.has(staffIdx)) {
+                            sysMap.set(staffIdx, { first: notes[0], last: notes[notes.length-1] });
+                        } else {
+                            sysMap.get(staffIdx)!.last = notes[notes.length-1];
+                        }
+                    }
+                });
+            });
+        });
+
         // Generate Curves and Ties
         const curves: any[] = [];
         for (const slur of sheet.slurs) {
@@ -396,12 +423,46 @@ export class VexFlowMusicSheetCalculator {
                 const vfEnd = noteMap.get(slur.endNote);
                 
                 if (vfStart && vfEnd) {
-                    const curve = new VF.Curve(vfStart, vfEnd, {
-                        thickness: 2,
-                        xShift: 0,
-                        yShift: 10
-                    });
-                    curves.push(curve);
+                    const sysStart = vfNoteToSystem.get(vfStart);
+                    const sysEnd = vfNoteToSystem.get(vfEnd);
+
+                    if (sysStart !== undefined && sysEnd !== undefined && sysStart !== sysEnd) {
+                        // Split Curve
+                        // Segment 1: Start -> End of Start System
+                        const startStaffIdx = slur.startNote.staffId - 1;
+                        const sysStartData = systemStaffFirstLast.get(sysStart)?.get(startStaffIdx);
+                        if (sysStartData) {
+                            const curve1 = new VF.Curve(vfStart, sysStartData.last, {
+                                thickness: 2,
+                                xShift: 0,
+                                yShift: 10,
+                                invert: slur.startNote.pitch.octave >= 5
+                            });
+                            curves.push(curve1);
+                        }
+
+                        // Segment 2: Start of End System -> End
+                        const endStaffIdx = slur.endNote.staffId - 1;
+                        const sysEndData = systemStaffFirstLast.get(sysEnd)?.get(endStaffIdx);
+                        if (sysEndData) {
+                            const curve2 = new VF.Curve(sysEndData.first, vfEnd, {
+                                thickness: 2,
+                                xShift: 0,
+                                yShift: 10,
+                                invert: slur.endNote.pitch.octave >= 5
+                            });
+                            curves.push(curve2);
+                        }
+                    } else {
+                        // Normal Single Curve
+                        const curve = new VF.Curve(vfStart, vfEnd, {
+                            thickness: 2,
+                            xShift: 0,
+                            yShift: 10,
+                            invert: slur.startNote.pitch.octave >= 5
+                        });
+                        curves.push(curve);
+                    }
                 }
             }
         }

@@ -23,6 +23,7 @@ export class OpenSheetMusicDisplay {
     private drawer: VexFlowMusicSheetDrawer;
     private sheet: MusicSheet | undefined;
     private graphicalSheet: GraphicalMusicSheet | undefined;
+    private isDarkMode: boolean = false;
     
     public cursor: Cursor;
 
@@ -53,6 +54,19 @@ export class OpenSheetMusicDisplay {
         });
     }
 
+    public setDarkMode(darkMode: boolean): void {
+        this.isDarkMode = darkMode;
+        
+        // Update Container Background
+        if (this.container) {
+            this.container.style.backgroundColor = darkMode ? "#222" : ""; // Reset to CSS default (white)
+        }
+
+        if (this.sheet) {
+            this.render();
+        }
+    }
+
     /**
      * Render the loaded sheet music.
      */
@@ -66,7 +80,7 @@ export class OpenSheetMusicDisplay {
         const vfMeasures = VexFlowMusicSheetCalculator.format(this.graphicalSheet, width);
         
         // Draw and get cursor positions
-        const cursorPositions = this.drawer.draw(vfMeasures);
+        const cursorPositions = this.drawer.draw(vfMeasures, { darkMode: this.isDarkMode });
         
         // Initialize Cursor
         this.cursor.init(cursorPositions);

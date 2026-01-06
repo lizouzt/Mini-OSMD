@@ -11,14 +11,27 @@ export class VexFlowMusicSheetDrawer {
     private renderer: any;
     private ctx: any;
 
-    public draw(data: { systems: any[][], curves: any[] }): Map<number, { x: number, y: number, height: number }[]> {
+    public draw(data: { systems: any[][], curves: any[] }, options: { darkMode?: boolean } = {}): Map<number, { x: number, y: number, width: number, height: number }[]> {
         const { systems, curves } = data;
+        const { darkMode } = options;
+
         this.ctx.clear();
+        
+        // Native Dark Mode Styling
+        const color = darkMode ? "#FFFFFF" : "#000000";
+        const style = { fillStyle: color, strokeStyle: color };
+
+        this.ctx.setFillStyle(color);
+        this.ctx.setStrokeStyle(color);
+
+        // Remove CSS filters if any
+        this.renderer.ctx.element.style.filter = "none";
+
         const startX = 10;
         let x = startX;
         let y = 50; // Initial Top Margin
         
-        const cursorPositions = new Map<number, { x: number, y: number, height: number }[]>();
+        const cursorPositions = new Map<number, { x: number, y: number, width: number, height: number }[]>();
 
         // Loop Systems
         for (const system of systems) {
@@ -60,6 +73,9 @@ export class VexFlowMusicSheetDrawer {
                         stave.setVoltaType(staffData.voltaType, staffData.voltaNumber || "1", 0);
                     }
 
+                    // Ensure Context Style for Stave
+                    this.ctx.setFillStyle(color);
+                    this.ctx.setStrokeStyle(color);
                     stave.setContext(this.ctx).draw();
                     vfStaves.push(stave);
 
@@ -68,39 +84,52 @@ export class VexFlowMusicSheetDrawer {
                     if (voiceIds.length > 0) {
                         const { voices, allNotes } = this.createVoices(staffData);
                         
+                        // Apply Style to Notes (Fixes Stems)
+                        allNotes.forEach((note: any) => {
+                            if (note.setStyle) note.setStyle(style);
+                        });
+
                         // Format to width
                         const formatter = new VF.Formatter().joinVoices(voices).format(voices, measureData.width - 50);
                         
                         voices.forEach((v: any) => v.draw(this.ctx, stave));
                         
                         // Collect Cursor Positions
-                        const staveTop = stave.getTopLineTopY();
-                        const staveBot = stave.getBottomLineBottomY();
+                        // Expand vertical range to cover ledger lines (approx +/- 25px)
+                        const staveTop = stave.getTopLineTopY() - 25;
+                        const staveBot = stave.getBottomLineBottomY() + 25;
                         const staveHeight = staveBot - staveTop;
 
                         allNotes.forEach((note: any) => {
                             if (note.sourceNote) { // Attached in Calculator
                                 const ts = note.sourceNote.timestamp.RealValue;
-                                const bbox = note.getBoundingBox(); // Valid after draw/format? Note must be drawn for absolute x?
-                                // VexFlow note x is set by formatter. Absolute X needs Stave X.
-                                // If note.draw() was called, note.getBoundingBox() should returns absolute coords in SVG context.
+                                const bbox = note.getBoundingBox(); 
                                 if (bbox) {
                                     if (!cursorPositions.has(ts)) cursorPositions.set(ts, []);
                                     cursorPositions.get(ts)!.push({
                                         x: bbox.getX(),
                                         y: staveTop,
+                                        width: bbox.getW(),
                                         height: staveHeight
                                     });
-                                    console.log(`Cursor Pos - TS: ${ts}, X: ${bbox.getX()}, Y: ${staveTop}, Height: ${staveHeight}`);
                                 }
                             }
                         });
 
                         if (staffData.beams) {
-                            staffData.beams.forEach((beam: any) => beam.setContext(this.ctx).draw());
+                            staffData.beams.forEach((beam: any) => {
+                                if (beam.setStyle) beam.setStyle(style);
+                                beam.setContext(this.ctx).draw();
+                            });
                         }
                         if (staffData.vfTuplets) {
-                            staffData.vfTuplets.forEach((t: any) => t.setContext(this.ctx).draw());
+                            staffData.vfTuplets.forEach((t: any) => {
+                                // Tuplets usually rely on context, but verify if they have setStyle? 
+                                // VexFlow Tuplets often just use context stroke/fill.
+                                this.ctx.setFillStyle(color);
+                                this.ctx.setStrokeStyle(color);
+                                t.setContext(this.ctx).draw();
+                            });
                         }
 
                         // Calculate visual bottom for system spacing
@@ -124,6 +153,8 @@ export class VexFlowMusicSheetDrawer {
 
                 // Connectors
                 if (vfStaves.length > 1 && x === startX) {
+                     this.ctx.setStrokeStyle(color);
+                     this.ctx.setFillStyle(color);
                      const connector = new VF.StaveConnector(vfStaves[0], vfStaves[vfStaves.length - 1]);
                      connector.setType(VF.StaveConnector.type.BRACE);
                      connector.setContext(this.ctx).draw();
@@ -141,7 +172,14 @@ export class VexFlowMusicSheetDrawer {
         }
 
         if (curves) {
-            curves.forEach(curve => curve.setContext(this.ctx).draw());
+            this.ctx.setStrokeStyle(color);
+            this.ctx.setFillStyle(color);
+            curves.forEach(curve => {
+                // Some VexFlow curves/modifiers might need specific rendering options if they don't follow context
+                // But generally, context is enough for simple paths.
+                // TextBracket (OctaveShift) definitely needs context.
+                curve.setContext(this.ctx).draw();
+            });
         }
         
         if (this.renderer.resize) {

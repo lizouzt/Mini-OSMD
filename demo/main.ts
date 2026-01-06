@@ -91,12 +91,16 @@ const zoomOutBtn = document.getElementById("zoom-out-btn");
 const zoomLevelSpan = document.getElementById("zoom-level");
 const cursorPrevBtn = document.getElementById("cursor-prev-btn");
 const cursorNextBtn = document.getElementById("cursor-next-btn");
+const cursorPlayBtn = document.getElementById("cursor-play-btn");
 const cursorShowBtn = document.getElementById("cursor-show-btn");
+const darkModeBtn = document.getElementById("dark-mode-btn");
 const fileUpload = document.getElementById("file-upload") as HTMLInputElement;
 
 if (container && selectElement) {
     const osmd = new OpenSheetMusicDisplay(container);
     let currentZoom = 1.0;
+    let isDarkMode = false;
+    let playInterval: any = null;
 
     const scores = [
         { name: "Built-in Test (Ultimate)", value: "builtin", url: "" },
@@ -120,6 +124,9 @@ if (container && selectElement) {
 
     const loadScore = async (value: string) => {
         try {
+            // Stop playing if new score loads
+            if (playInterval) togglePlay();
+
             // Reset Zoom
             currentZoom = 1.0;
             updateZoom();
@@ -155,11 +162,26 @@ if (container && selectElement) {
         if (svg) {
             svg.style.transform = `scale(${currentZoom})`;
             svg.style.transformOrigin = "top left";
-            // Adjust container height/width if needed? 
-            // SVG usually scales within its viewbox if width is set, but here we force scale.
-            // Better: Set width on SVG?
-            // Simple CSS scale is enough for demo.
         }
+    };
+
+    const togglePlay = () => {
+        if (playInterval) {
+            clearInterval(playInterval);
+            playInterval = null;
+            if (cursorPlayBtn) cursorPlayBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>`;
+        } else {
+            playInterval = setInterval(() => {
+                osmd.cursor.next();
+            }, 200); // 200ms per step
+            if (cursorPlayBtn) cursorPlayBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+        }
+    };
+
+    const toggleDarkMode = () => {
+        isDarkMode = !isDarkMode;
+        osmd.setDarkMode(isDarkMode);
+        document.body.classList.toggle("dark-mode", isDarkMode);
     };
 
     // Events
@@ -176,6 +198,9 @@ if (container && selectElement) {
                 console.log("File selected:", file.name);
                 
                 try {
+                    // Stop playing
+                    if (playInterval) togglePlay();
+
                     currentZoom = 1.0;
                     updateZoom();
 
@@ -213,6 +238,8 @@ if (container && selectElement) {
 
     cursorNextBtn?.addEventListener("click", () => osmd.cursor.next());
     cursorPrevBtn?.addEventListener("click", () => osmd.cursor.prev());
+    cursorPlayBtn?.addEventListener("click", togglePlay);
+    
     cursorShowBtn?.addEventListener("click", () => {
         if (osmd.cursor.hidden) {
             osmd.cursor.show();
@@ -223,9 +250,15 @@ if (container && selectElement) {
         }
     });
 
+    darkModeBtn?.addEventListener("click", toggleDarkMode);
+
     window.addEventListener("keydown", (e) => {
         if (e.key === "ArrowRight") osmd.cursor.next();
         if (e.key === "ArrowLeft") osmd.cursor.prev();
+        if (e.key === " ") { 
+             e.preventDefault();
+             togglePlay(); 
+        }
     });
 
     // Initial load

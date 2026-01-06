@@ -9,8 +9,7 @@ export class Cursor {
         this.cursorElement = document.createElement("div");
         this.cursorElement.style.position = "absolute";
         this.cursorElement.style.zIndex = "1000";
-        this.cursorElement.style.backgroundColor = "rgba(255, 0, 0, 0.5)"; // Red transparent
-        this.cursorElement.style.width = "4px"; // Width of cursor
+        this.cursorElement.style.backgroundColor = "rgba(64, 156, 255, 0.4)"; // Blue transparent
         this.cursorElement.style.pointerEvents = "none";
         this.cursorElement.style.display = "none";
         this.container.appendChild(this.cursorElement);
@@ -19,7 +18,7 @@ export class Cursor {
     private container: HTMLElement;
     private cursorElement: HTMLElement;
     // Map<Timestamp RealValue, Position[]>
-    private timestampMap: Map<number, { x: number, y: number, height: number }[]> = new Map();
+    private timestampMap: Map<number, { x: number, y: number, width: number, height: number }[]> = new Map();
     private timestamps: number[] = [];
     private currentIndex: number = 0;
 
@@ -27,7 +26,7 @@ export class Cursor {
         return this.cursorElement.style.display === "none";
     }
 
-    public init(timestampMap: Map<number, { x: number, y: number, height: number }[]>) {
+    public init(timestampMap: Map<number, { x: number, y: number, width: number, height: number }[]>) {
         this.timestampMap = timestampMap;
         this.timestamps = Array.from(timestampMap.keys()).sort((a, b) => a - b);
         this.currentIndex = 0;
@@ -72,17 +71,19 @@ export class Cursor {
             let minTop = positions[0].y;
             let maxBot = positions[0].y + positions[0].height;
             let minX = positions[0].x;
+            let maxWidth = positions[0].width || 10;
 
             positions.forEach(p => {
                 minTop = Math.min(minTop, p.y);
                 maxBot = Math.max(maxBot, p.y + p.height);
-                // X should be consistent, but take min just in case
-                minX = Math.min(minX, p.x); 
+                minX = Math.min(minX, p.x);
+                maxWidth = Math.max(maxWidth, p.width || 10);
             });
 
             this.cursorElement.style.left = `${minX}px`;
             this.cursorElement.style.top = `${minTop}px`;
             this.cursorElement.style.height = `${maxBot - minTop}px`;
+            this.cursorElement.style.width = `${maxWidth}px`;
         }
     }
 }
