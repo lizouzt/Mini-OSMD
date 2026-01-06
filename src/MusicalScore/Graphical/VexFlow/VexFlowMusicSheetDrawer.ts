@@ -27,7 +27,7 @@ export class VexFlowMusicSheetDrawer {
         // Remove CSS filters if any
         this.renderer.ctx.element.style.filter = "none";
 
-        const startX = 10;
+        const startX = 50;
         let x = startX;
         let y = 50; // Initial Top Margin
         
@@ -65,9 +65,10 @@ export class VexFlowMusicSheetDrawer {
                     if (staffData.timeSignature) {
                         stave.addTimeSignature(staffData.timeSignature);
                     }
-                    if (measureData.endBarLineType !== undefined) {
-                        stave.setEndBarType(measureData.endBarLineType);
-                    }
+                    
+                    // Default to Single Barline if not specified (Standard Notation)
+                    const endBarType = measureData.endBarLineType !== undefined ? measureData.endBarLineType : VF.Barline.type.SINGLE;
+                    stave.setEndBarType(endBarType);
                     
                     if (staffData.voltaType !== undefined && staffData.voltaType !== VF.Volta.type.NONE) {
                         stave.setVoltaType(staffData.voltaType, staffData.voltaNumber || "1", 0);
@@ -87,6 +88,8 @@ export class VexFlowMusicSheetDrawer {
                         // Apply Style to Notes (Fixes Stems)
                         allNotes.forEach((note: any) => {
                             if (note.setStyle) note.setStyle(style);
+                            if (note.setStemStyle) note.setStemStyle(style);
+                            if (note.setLedgerLineStyle) note.setLedgerLineStyle(style);
                         });
 
                         // Format to width
@@ -95,9 +98,12 @@ export class VexFlowMusicSheetDrawer {
                         voices.forEach((v: any) => v.draw(this.ctx, stave));
                         
                         // Collect Cursor Positions
-                        // Expand vertical range to cover ledger lines (approx +/- 25px)
-                        const staveTop = stave.getTopLineTopY() - 25;
-                        const staveBot = stave.getBottomLineBottomY() + 25;
+                        // Correctly calculate stave vertical boundaries (Lines 0 to 4)
+                        const topY = stave.getYForLine(0);
+                        const botY = stave.getYForLine(stave.getNumLines() - 1) + stave.getHeight() / 2; // Approximate extra space for ledger lines
+                        const staveTop = topY - 10; // 1 space above
+                        const staveBot = botY + 10; // 1 space below
+
                         const staveHeight = staveBot - staveTop;
 
                         allNotes.forEach((note: any) => {
@@ -119,6 +125,12 @@ export class VexFlowMusicSheetDrawer {
                         if (staffData.beams) {
                             staffData.beams.forEach((beam: any) => {
                                 if (beam.setStyle) beam.setStyle(style);
+                                
+                                // Fix: Make beams thinner (Default is 5)
+                                if (beam.render_options) {
+                                    beam.render_options.beam_width = 2;
+                                }
+
                                 beam.setContext(this.ctx).draw();
                             });
                         }
@@ -151,7 +163,7 @@ export class VexFlowMusicSheetDrawer {
                     }
                 });
 
-                // Connectors
+                // Connectors (Left side of system)
                 if (vfStaves.length > 1 && x === startX) {
                      this.ctx.setStrokeStyle(color);
                      this.ctx.setFillStyle(color);
@@ -162,6 +174,28 @@ export class VexFlowMusicSheetDrawer {
                      const lineConnector = new VF.StaveConnector(vfStaves[0], vfStaves[vfStaves.length - 1]);
                      lineConnector.setType(VF.StaveConnector.type.SINGLE_LEFT);
                      lineConnector.setContext(this.ctx).draw();
+                }
+
+                // Closing System Connector (Right side of system)
+                // Draw a vertical line connecting all staves at the end of the system
+                const isLastMeasure = system.indexOf(measureData) === system.length - 1;
+                if (isLastMeasure && vfStaves.length > 1) {
+                    const topStave = vfStaves[0];
+                    const botStave = vfStaves[vfStaves.length - 1];
+                    
+                    // X position: Exact end of the stave width
+                    const lineX = topStave.getX() + topStave.getWidth();
+                    
+                    // Y positions: Top line of top stave to Bottom line of bottom stave
+                    const topY = topStave.getYForLine(0);
+                    const botY = botStave.getYForLine(botStave.getNumLines() - 1);
+                    
+                    this.ctx.beginPath();
+                    this.ctx.setStrokeStyle(color);
+                    this.ctx.setLineWidth(1.5); // Standard barline width
+                    this.ctx.moveTo(lineX, topY);
+                    this.ctx.lineTo(lineX, botY);
+                    this.ctx.stroke();
                 }
 
                 x += measureData.width;

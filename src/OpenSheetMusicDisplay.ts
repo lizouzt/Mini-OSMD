@@ -77,7 +77,8 @@ export class OpenSheetMusicDisplay {
         }
         this.graphicalSheet = new GraphicalMusicSheet(this.sheet);
         const width = this.container.clientWidth || 1000;
-        const vfMeasures = VexFlowMusicSheetCalculator.format(this.graphicalSheet, width);
+        // Subtract 100 for margins (startX=50 + right_margin=50)
+        const vfMeasures = VexFlowMusicSheetCalculator.format(this.graphicalSheet, width - 100);
         
         // Draw and get cursor positions
         const cursorPositions = this.drawer.draw(vfMeasures, { darkMode: this.isDarkMode });
