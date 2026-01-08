@@ -3,6 +3,10 @@ import * as VF from "vexflow";
 export class VexFlowMusicSheetDrawer {
     constructor(container: HTMLElement) {
         this.container = container;
+        // Check if container already has an SVG (from previous drawer) and clear it?
+        // Better to let the owner manage lifecycle, or clear here.
+        this.container.innerHTML = ""; // Simple clear for single-drawer model
+        
         this.renderer = new VF.Renderer(container as HTMLDivElement, VF.Renderer.Backends.SVG);
         this.ctx = this.renderer.getContext();
     }
@@ -11,11 +15,22 @@ export class VexFlowMusicSheetDrawer {
     private renderer: any;
     private ctx: any;
 
-    public draw(data: { systems: any[][], curves: any[] }, options: { darkMode?: boolean } = {}): Map<number, { x: number, y: number, width: number, height: number }[]> {
+    public clear(): void {
+        this.ctx.clear();
+    }
+
+    public draw(data: { systems: any[][], curves: any[] }, options: { darkMode?: boolean, zoom?: number } = {}): Map<number, { topY: number, botY: number }> {
         const { systems, curves } = data;
-        const { darkMode } = options;
+        const { darkMode, zoom = 1.0 } = options;
 
         this.ctx.clear();
+        // Reset scale? VexFlow SVGContext doesn't have resetTransform easily.
+        // But since we clear container in constructor, we should be creating a NEW Drawer on every render ideally.
+        // If we reuse drawer, we risk accumulating state.
+        // Assuming we reuse drawer:
+        // Try to overwrite scale. 
+        // VexFlow setScale usually sets a transform on the main group.
+        this.ctx.scale(zoom, zoom);
         
         // Native Dark Mode Styling
         const color = darkMode ? "#FFFFFF" : "#000000";
@@ -26,12 +41,14 @@ export class VexFlowMusicSheetDrawer {
 
         // Remove CSS filters if any
         this.renderer.ctx.element.style.filter = "none";
+        this.renderer.ctx.element.style.display = "block"; // Fix alignment issues
 
-        const startX = 50;
+        const startX = 10;
         let x = startX;
         let y = 50; // Initial Top Margin
         
-        const cursorPositions = new Map<number, { x: number, y: number, width: number, height: number }[]>();
+        // Map<MeasureNumber, Bounds>
+        const measureBounds = new Map<number, { topY: number, botY: number }>();
 
         // Loop Systems
         for (const system of systems) {
@@ -49,6 +66,8 @@ export class VexFlowMusicSheetDrawer {
                 
                 // Prepare VexFlow Staves
                 const vfStaves: any[] = [];
+                let measureTopY = Number.MAX_VALUE;
+                let measureBotY = Number.MIN_VALUE;
 
                 staves.forEach((staffData: any, index: number) => {
                     // Use calculated Offset
@@ -80,6 +99,14 @@ export class VexFlowMusicSheetDrawer {
                     stave.setContext(this.ctx).draw();
                     vfStaves.push(stave);
 
+                    // Track bounds for this system/measure vertical slice
+                    // Stave Top = line 0
+                    // Stave Bot = last line
+                    const sTop = stave.getY();
+                    const sBot = stave.getBottomY();
+                    if (sTop < measureTopY) measureTopY = sTop;
+                    if (sBot > measureBotY) measureBotY = sBot;
+
                     const voiceIds = Object.keys(staffData.vfVoices || {});
                     
                     if (voiceIds.length > 0) {
@@ -97,47 +124,15 @@ export class VexFlowMusicSheetDrawer {
                         
                         voices.forEach((v: any) => v.draw(this.ctx, stave));
                         
-                        // Collect Cursor Positions
-                        // Correctly calculate stave vertical boundaries (Lines 0 to 4)
-                        const topY = stave.getYForLine(0);
-                        const botY = stave.getYForLine(stave.getNumLines() - 1) + stave.getHeight() / 2; // Approximate extra space for ledger lines
-                        const staveTop = topY - 10; // 1 space above
-                        const staveBot = botY + 10; // 1 space below
-
-                        const staveHeight = staveBot - staveTop;
-
-                        allNotes.forEach((note: any) => {
-                            if (note.sourceNote) { // Attached in Calculator
-                                const ts = note.sourceNote.timestamp.RealValue;
-                                const bbox = note.getBoundingBox(); 
-                                if (bbox) {
-                                    if (!cursorPositions.has(ts)) cursorPositions.set(ts, []);
-                                    cursorPositions.get(ts)!.push({
-                                        x: bbox.getX(),
-                                        y: staveTop,
-                                        width: bbox.getW(),
-                                        height: staveHeight
-                                    });
-                                }
-                            }
-                        });
-
                         if (staffData.beams) {
                             staffData.beams.forEach((beam: any) => {
                                 if (beam.setStyle) beam.setStyle(style);
-                                
-                                // Fix: Make beams thinner (Default is 5)
-                                if (beam.render_options) {
-                                    beam.render_options.beam_width = 2;
-                                }
-
+                                if (beam.render_options) beam.render_options.beam_width = 2;
                                 beam.setContext(this.ctx).draw();
                             });
                         }
                         if (staffData.vfTuplets) {
                             staffData.vfTuplets.forEach((t: any) => {
-                                // Tuplets usually rely on context, but verify if they have setStyle? 
-                                // VexFlow Tuplets often just use context stroke/fill.
                                 this.ctx.setFillStyle(color);
                                 this.ctx.setStrokeStyle(color);
                                 t.setContext(this.ctx).draw();
@@ -177,26 +172,27 @@ export class VexFlowMusicSheetDrawer {
                 }
 
                 // Closing System Connector (Right side of system)
-                // Draw a vertical line connecting all staves at the end of the system
                 const isLastMeasure = system.indexOf(measureData) === system.length - 1;
                 if (isLastMeasure && vfStaves.length > 1) {
                     const topStave = vfStaves[0];
                     const botStave = vfStaves[vfStaves.length - 1];
-                    
-                    // X position: Exact end of the stave width
                     const lineX = topStave.getX() + topStave.getWidth();
-                    
-                    // Y positions: Top line of top stave to Bottom line of bottom stave
                     const topY = topStave.getYForLine(0);
                     const botY = botStave.getYForLine(botStave.getNumLines() - 1);
                     
                     this.ctx.beginPath();
                     this.ctx.setStrokeStyle(color);
-                    this.ctx.setLineWidth(1.5); // Standard barline width
+                    this.ctx.setLineWidth(1.5);
                     this.ctx.moveTo(lineX, topY);
                     this.ctx.lineTo(lineX, botY);
                     this.ctx.stroke();
                 }
+
+                // Store measure bounds (system-wide)
+                measureBounds.set(measureData.measureIndex, { 
+                    topY: measureTopY, 
+                    botY: measureBotY 
+                });
 
                 x += measureData.width;
             }
@@ -209,18 +205,22 @@ export class VexFlowMusicSheetDrawer {
             this.ctx.setStrokeStyle(color);
             this.ctx.setFillStyle(color);
             curves.forEach(curve => {
-                // Some VexFlow curves/modifiers might need specific rendering options if they don't follow context
-                // But generally, context is enough for simple paths.
-                // TextBracket (OctaveShift) definitely needs context.
                 curve.setContext(this.ctx).draw();
             });
         }
         
         if (this.renderer.resize) {
-            this.renderer.resize(this.container.clientWidth, y + 100);
+            // Resize logic: 
+            // VexFlow renderer.resize(w, h) sets SVG width/height and viewBox.
+            // If scale() was called, we need to ensure viewBox is correct.
+            // But VexFlow's SVGContext doesn't automatically adjust viewBox for scale.
+            // We usually want: SVG size = container size. ViewBox = scaled size? No.
+            // If we use ctx.scale(2), we draw 2x larger. We need 2x pixels.
+            // So resizing to (width, height) where height is scaled is correct.
+            this.renderer.resize(this.container.clientWidth, (y + 100) * zoom);
         }
 
-        return cursorPositions;
+        return measureBounds;
     }
 
     /**
@@ -260,7 +260,7 @@ export class VexFlowMusicSheetDrawer {
         if (voiceIds.length === 0) return maxY;
 
         const { voices, allNotes } = this.createVoices(staffData);
-        const dummyStave = new VF.Stave(0, 0, width); // Unused but maybe needed if VexFlow strict
+        const dummyStave = new VF.Stave(0, 0, width); 
         new VF.Formatter().joinVoices(voices).format(voices, width - 50);
 
         allNotes.forEach((note: any) => {

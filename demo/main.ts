@@ -93,6 +93,7 @@ const cursorPrevBtn = document.getElementById("cursor-prev-btn");
 const cursorNextBtn = document.getElementById("cursor-next-btn");
 const cursorPlayBtn = document.getElementById("cursor-play-btn");
 const cursorShowBtn = document.getElementById("cursor-show-btn");
+const cursorTypeSelector = document.getElementById("cursor-type-selector") as HTMLSelectElement;
 const darkModeBtn = document.getElementById("dark-mode-btn");
 const fileUpload = document.getElementById("file-upload") as HTMLInputElement;
 
@@ -156,13 +157,10 @@ if (container && selectElement) {
     };
 
     const updateZoom = () => {
+        osmd.zoom = currentZoom; // Sync zoom to OSMD
+        console.log(`Zoom set to ${currentZoom}`);
         if (zoomLevelSpan) zoomLevelSpan.innerText = `${Math.round(currentZoom * 100)}%`;
-        // Apply CSS Zoom to the SVG element inside container
-        const svg = container.querySelector("svg");
-        if (svg) {
-            svg.style.transform = `scale(${currentZoom})`;
-            svg.style.transformOrigin = "top left";
-        }
+        // Internal rendering handles scaling now.
     };
 
     const togglePlay = () => {
@@ -249,6 +247,14 @@ if (container && selectElement) {
             cursorShowBtn.innerText = "Show Cursor";
         }
     });
+
+    if (cursorTypeSelector) {
+        cursorTypeSelector.value = "1"; // Default to Cover Notes (CurrentArea)
+        cursorTypeSelector.addEventListener("change", (e) => {
+            const val = parseInt((e.target as HTMLSelectElement).value);
+            osmd.setCursorOptions({ type: val as CursorType });
+        });
+    }
 
     darkModeBtn?.addEventListener("click", toggleDarkMode);
 

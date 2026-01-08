@@ -107,7 +107,7 @@ button:active {
 main {
     flex: 1;
     overflow: auto;
-    padding: 20px;
+    padding: 0;
     display: flex;
     justify-content: center;
     background-color: #fff;

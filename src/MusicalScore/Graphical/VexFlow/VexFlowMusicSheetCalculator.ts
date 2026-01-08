@@ -31,7 +31,7 @@ export class VexFlowMusicSheetCalculator {
         }
     }
 
-    public static format(graphicalSheet: GraphicalMusicSheet, containerWidth: number = 1000): { systems: any[][], curves: any[] } {
+    public static format(graphicalSheet: GraphicalMusicSheet, containerWidth: number = 1000): { systems: any[][], curves: any[], noteMap: Map<any, any> } {
         const systems: any[][] = [];
         let currentSystem: any[] = [];
         let currentSystemWidth = 0;
@@ -359,6 +359,7 @@ export class VexFlowMusicSheetCalculator {
 
             const measureData = {
                 measureNumber: measure.measureNumber,
+                measureIndex: sheet.sourceMeasures.indexOf(measure),
                 staves: stavesData, // New structure
                 width: minWidth,
                 endBarLineType: endBarLineType
@@ -381,10 +382,16 @@ export class VexFlowMusicSheetCalculator {
             currentSystemWidth += measureData.width;
         }
 
-        // Add last system (do not stretch last system usually, or stretch partially?)
-        // Standard practice: Just leave it left-aligned or stretch if close to full.
-        // For simple rendering, let's leave it as is (ragged right).
+        // Add last system and justify it to ensure it fills the container
         if (currentSystem.length > 0) {
+            const extraSpace = containerWidth - currentSystemWidth;
+            // Only stretch if it's reasonable (e.g. not a single measure in a wide line)
+            // But to strictly "fill display area", we stretch.
+            // OSMD StretchLastSystemLine option controls this. We'll default to True for this fix.
+            if (extraSpace > 0) {
+                 const extraPerMeasure = extraSpace / currentSystem.length;
+                 currentSystem.forEach(m => m.width += extraPerMeasure);
+            }
             systems.push(currentSystem);
         }
 
@@ -518,6 +525,6 @@ export class VexFlowMusicSheetCalculator {
             }
         }
 
-        return { systems, curves };
+        return { systems, curves, noteMap };
     }
 }

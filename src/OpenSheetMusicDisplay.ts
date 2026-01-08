@@ -4,10 +4,11 @@ import { VexFlowMusicSheetCalculator } from "./MusicalScore/Graphical/VexFlow/Ve
 import { VexFlowMusicSheetDrawer } from "./MusicalScore/Graphical/VexFlow/VexFlowMusicSheetDrawer";
 import { MusicSheet } from "./MusicalScore/MusicSheet";
 import { MXLHelper } from "./Common/FileIO/MXLHelper";
-import { Cursor } from "./OpenSheetMusicDisplay/Cursor";
+import { Cursor, CursorType } from "./OpenSheetMusicDisplay/Cursor";
+import type { CursorOptions } from "./OpenSheetMusicDisplay/Cursor";
 
 export class OpenSheetMusicDisplay {
-    constructor(container: string | HTMLElement) {
+    constructor(container: string | HTMLElement, options: Partial<CursorOptions> = {}) {
         if (typeof container === "string") {
             const el = document.getElementById(container);
             if (!el) throw new Error("Container element not found");
@@ -16,7 +17,7 @@ export class OpenSheetMusicDisplay {
             this.container = container;
         }
         this.drawer = new VexFlowMusicSheetDrawer(this.container);
-        this.cursor = new Cursor(this.container);
+        this.cursor = new Cursor(this.container, this, options);
     }
 
     private container: HTMLElement;
@@ -24,8 +25,19 @@ export class OpenSheetMusicDisplay {
     private sheet: MusicSheet | undefined;
     private graphicalSheet: GraphicalMusicSheet | undefined;
     private isDarkMode: boolean = false;
+    private _zoom: number = 1.0;
     
     public cursor: Cursor;
+
+    public get zoom(): number {
+        return this._zoom;
+    }
+
+    public set zoom(value: number) {
+        this._zoom = value;
+        // Re-render to apply layout changes (reflow)
+        this.render();
+    }
 
     /**
      * Load a MusicXML file string or MXL ArrayBuffer.
@@ -67,6 +79,10 @@ export class OpenSheetMusicDisplay {
         }
     }
 
+    public setCursorOptions(options: Partial<CursorOptions>): void {
+        this.cursor.setOptions(options);
+    }
+
     /**
      * Render the loaded sheet music.
      */
@@ -75,16 +91,39 @@ export class OpenSheetMusicDisplay {
             console.warn("No sheet loaded. Call load() first.");
             return;
         }
+        
+        // Preserve cursor state
+        const cursorIndex = this.cursor.iteratorIndex;
+        const cursorHidden = this.cursor.hidden;
+
+        // Recreate drawer to reset VexFlow context/scale state cleanly
+        // This prevents accumulated transforms and ensures clean SVG
+        this.drawer = new VexFlowMusicSheetDrawer(this.container);
+
         this.graphicalSheet = new GraphicalMusicSheet(this.sheet);
         const width = this.container.clientWidth || 1000;
-        // Subtract 100 for margins (startX=50 + right_margin=50)
-        const vfMeasures = VexFlowMusicSheetCalculator.format(this.graphicalSheet, width - 100);
+        const effectiveWidth = width / this.zoom;
         
-        // Draw and get cursor positions
-        const cursorPositions = this.drawer.draw(vfMeasures, { darkMode: this.isDarkMode });
+        // format now returns noteMap as well
+        // Use a smaller margin (e.g. 20) to avoid excessive whitespace
+        const { systems, curves, noteMap } = VexFlowMusicSheetCalculator.format(this.graphicalSheet, effectiveWidth - 20);
         
-        // Initialize Cursor
-        this.cursor.init(cursorPositions);
-        this.cursor.show(); // Show initially at start
+        // Draw returns measureBounds now
+        const measureBounds = this.drawer.draw({ systems, curves }, { darkMode: this.isDarkMode, zoom: this.zoom });
+        
+        // Initialize Cursor with Sheet logic, Graphic map, and Layout bounds
+        // Note: Cursor needs new noteMap and bounds
+        this.cursor.init(this.sheet, noteMap, measureBounds);
+        
+        // Restore cursor state
+        if (!cursorHidden) {
+            this.cursor.show();
+            this.cursor.iteratorIndex = cursorIndex; // Restore position
+        } else {
+            this.cursor.hide();
+        }
     }
 }
+
+export { CursorType };
+export type { CursorOptions };
