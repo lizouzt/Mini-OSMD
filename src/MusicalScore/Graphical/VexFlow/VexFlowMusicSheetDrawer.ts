@@ -62,6 +62,27 @@ export class VexFlowMusicSheetDrawer {
 
             // 3. Draw Measures
             for (const measureData of system) {
+                // Group Measure Elements (OSMD Structure Parity)
+                if (this.ctx.openGroup) {
+                    this.ctx.openGroup("vf-measure", `measure-${measureData.measureNumber}`);
+                }
+
+                // Global Formatting for Alignment
+                const allVoicesInMeasure: any[] = [];
+                measureData.staves.forEach((staffData: any) => {
+                     const res = this.createVoices(staffData);
+                     staffData.tempVoices = res.voices;
+                     staffData.tempAllNotes = res.allNotes;
+                     allVoicesInMeasure.push(...res.voices);
+                });
+                
+                // Format ALL voices together (Stave Alignment)
+                // Use safe width calculation (width - padding for modifiers)
+                const formatWidth = Math.max(50, measureData.width - 60);
+                if (allVoicesInMeasure.length > 0) {
+                     new VF.Formatter().joinVoices(allVoicesInMeasure).format(allVoicesInMeasure, formatWidth);
+                }
+
                 const staves = measureData.staves;
                 
                 // Prepare VexFlow Staves
@@ -89,6 +110,13 @@ export class VexFlowMusicSheetDrawer {
                     const endBarType = measureData.endBarLineType !== undefined ? measureData.endBarLineType : VF.Barline.type.SINGLE;
                     stave.setEndBarType(endBarType);
                     
+                    if (staffData.label) {
+                        stave.setText(staffData.label, VF.Modifier.Position.LEFT);
+                        // Add padding for label?
+                        // Stave.setText usually draws outside. We might need to adjust startX if it's too long.
+                        // But for now let's just draw it.
+                    }
+                    
                     if (staffData.voltaType !== undefined && staffData.voltaType !== VF.Volta.type.NONE) {
                         stave.setVoltaType(staffData.voltaType, staffData.voltaNumber || "1", 0);
                     }
@@ -110,7 +138,9 @@ export class VexFlowMusicSheetDrawer {
                     const voiceIds = Object.keys(staffData.vfVoices || {});
                     
                     if (voiceIds.length > 0) {
-                        const { voices, allNotes } = this.createVoices(staffData);
+                        // Use Pre-Formatted Voices
+                        const voices = staffData.tempVoices || [];
+                        const allNotes = staffData.tempAllNotes || [];
                         
                         // Apply Style to Notes (Fixes Stems)
                         allNotes.forEach((note: any) => {
@@ -118,17 +148,29 @@ export class VexFlowMusicSheetDrawer {
                             if (note.setStemStyle) note.setStemStyle(style);
                             if (note.setLedgerLineStyle) note.setLedgerLineStyle(style);
                         });
-
-                        // Format to width
-                        // Dynamic width calculation based on Stave's actual modifier width (clef, key, time sig)
-                        const noteStartX = stave.getNoteStartX();
-                        const startOffset = noteStartX - stave.getX();
-                        // Available width = Total Width - Start Offset - End Padding (10)
-                        const availableWidth = Math.max(50, measureData.width - startOffset - 10);
                         
-                        const formatter = new VF.Formatter().joinVoices(voices).format(voices, availableWidth);
+                        // Formatting already done globally!
                         
                         voices.forEach((v: any) => v.draw(this.ctx, stave));
+                        
+                        // Manually Draw Lyrics (Aligned Baseline)
+                        allNotes.forEach((note: any) => {
+                             const sourceNote = (note as any).sourceNote;
+                             if (sourceNote && sourceNote.lyrics && sourceNote.lyrics.length > 0) {
+                                 const lyric = sourceNote.lyrics[0]; // Draw first verse
+                                 const text = lyric.text + (lyric.syllabic === "begin" || lyric.syllabic === "middle" ? "-" : "");
+                                 
+                                 // Position
+                                 const noteX = note.getAbsoluteX(); 
+                                 const lyricsY = stave.getBottomY() + 35; // Fixed Baseline
+                                 
+                                 // Simple centering estimate
+                                 const estimatedWidth = text.length * 4; 
+                                 
+                                 this.ctx.setFont("Times", 12, "normal"); // Ensure font
+                                 this.ctx.fillText(text, noteX - estimatedWidth, lyricsY);
+                             }
+                        });
                         
                         if (staffData.beams) {
                             staffData.beams.forEach((beam: any) => {
@@ -200,6 +242,10 @@ export class VexFlowMusicSheetDrawer {
                     botY: measureBotY 
                 });
 
+                if (this.ctx.closeGroup) {
+                    this.ctx.closeGroup();
+                }
+
                 x += measureData.width;
             }
 
@@ -242,7 +288,7 @@ export class VexFlowMusicSheetDrawer {
         let currentOffset = 0;
 
         for (let i = 0; i < numStaves - 1; i++) {
-            let maxRequiredDistance = 80; 
+            let maxRequiredDistance = 100; // Increased fixed minimum distance for consistency (OSMD-like)
 
             for (const measure of system) {
                 const upperStaff = measure.staves[i];
@@ -251,10 +297,13 @@ export class VexFlowMusicSheetDrawer {
                 const upperBottom = this.measureStaffBottom(upperStaff, measure.width);
                 const lowerTop = this.measureStaffTop(lowerStaff, measure.width);
 
-                const padding = 10;
+                const padding = 15;
                 const distance = upperBottom - lowerTop + padding;
                 
-                maxRequiredDistance = Math.max(maxRequiredDistance, distance);
+                // Only expand if content necessitates it
+                if (distance > maxRequiredDistance) {
+                    maxRequiredDistance = distance;
+                }
             }
 
             currentOffset += maxRequiredDistance;
@@ -278,7 +327,8 @@ export class VexFlowMusicSheetDrawer {
                 const noteY = line * 10; 
                 maxY = Math.max(maxY, noteY + 20); 
             });
-            const hasLyrics = note.modifiers.some((m: any) => m.category === "annotation");
+            const sourceNote = (note as any).sourceNote;
+            const hasLyrics = sourceNote && sourceNote.lyrics && sourceNote.lyrics.length > 0;
             if (hasLyrics) maxY += 30;
         });
 
@@ -320,7 +370,6 @@ export class VexFlowMusicSheetDrawer {
         for (const vid of voiceIds) {
             const notes = staffData.vfVoices[vid];
             const voice = new VF.Voice({ numBeats: numBeats, beatValue: beatValue });
-            voice.setStrict(false);
             voice.addTickables(notes);
             voices.push(voice);
             allNotes.push(...notes);

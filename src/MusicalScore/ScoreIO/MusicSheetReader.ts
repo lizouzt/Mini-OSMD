@@ -1,4 +1,4 @@
-import { MusicSheet } from "../MusicSheet";
+import { MusicSheet, Instrument } from "../MusicSheet";
 import { SourceMeasure, BarLineType, EndingType } from "../VoiceData/SourceMeasure";
 import { Note } from "../VoiceData/Note";
 import { Pitch, NoteEnum } from "../VoiceData/Pitch";
@@ -23,11 +23,28 @@ export class MusicSheetReader {
 
         for (let p = 0; p < parts.length; p++) {
             const part = parts[p];
+            const partId = part.getAttribute("id") || `P${p+1}`;
+            const partName = part.getElementsByTagName("part-name")[0]?.textContent || "";
+            
             const measures = part.getElementsByTagName("measure");
             
             // Per-part state
             let divisions = 4;
             let partMaxStaves = 1; 
+
+            // We need to parse attributes first to know max staves for Instrument
+            // But attributes are inside measures. 
+            // Quick scan of first measure for staves?
+            if (measures.length > 0) {
+                 const attr = measures[0].getElementsByTagName("attributes")[0];
+                 if (attr) {
+                     const stavesNode = attr.getElementsByTagName("staves")[0];
+                     if (stavesNode) partMaxStaves = parseInt(stavesNode.textContent || "1");
+                 }
+            }
+            
+            const instrument = new Instrument(partId, partName, partMaxStaves);
+            sheet.instruments.push(instrument);
 
             // Track open notations for THIS part
             const openSlurs: { [number: number]: Slur } = {};
@@ -311,6 +328,12 @@ export class MusicSheetReader {
 
         const note = new Note(pitch, new Fraction(dur, divisions * 4), type, voice, timestamp, staff);
         note.isRest = isRest;
+        
+        const printObject = xmlNote.getAttribute("print-object");
+        if (printObject === "no") {
+            note.printObject = false;
+        }
+        
         return note;
     }
 }

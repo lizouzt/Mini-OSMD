@@ -47,6 +47,17 @@ export class VexFlowMusicSheetCalculator {
         const currentKeyStrs: string[] = ["C", "C"]; // Track Key
         
         let activeVolta = false;
+        
+        // Map Staff Index to Instrument Name (for first system labels)
+        const staffInstrumentLabels: { [staffIdx: number]: string } = {};
+        let currentStaffIdx = 0;
+        sheet.instruments.forEach(inst => {
+            // Label usually on the first staff of the instrument
+            if (inst.name) {
+                staffInstrumentLabels[currentStaffIdx] = inst.name;
+            }
+            currentStaffIdx += inst.numStaves;
+        });
 
         for (const measure of sheet.sourceMeasures) {
             // Volta Logic
@@ -179,11 +190,20 @@ export class VexFlowMusicSheetCalculator {
                             duration += "r";
                         }
                         
-                        const vfNote = new VF.StaveNote({
-                            clef: currentClefStrs[s] || "treble",
-                            keys: keys,
-                            duration: duration,
-                        });
+                        let vfNote: VF.StaveNote;
+                        
+                        // Handle Invisible Notes (print-object="no") -> GhostNote
+                        if (!mainNote.printObject) {
+                             vfNote = new VF.GhostNote({
+                                 duration: duration
+                             }) as any;
+                        } else {
+                            vfNote = new VF.StaveNote({
+                                clef: currentClefStrs[s] || "treble",
+                                keys: keys,
+                                duration: duration,
+                            });
+                        }
                         
                         // Attach source note for cursor mapping
                         (vfNote as any).sourceNote = mainNote;
@@ -228,16 +248,7 @@ export class VexFlowMusicSheetCalculator {
                             }
                         });
                         
-                        // Add Lyrics
-                        if (mainNote.lyrics && mainNote.lyrics.length > 0) {
-                            mainNote.lyrics.forEach(lyric => {
-                                const text = lyric.text + (lyric.syllabic === "begin" || lyric.syllabic === "middle" ? "-" : "");
-                                const annotation = new VF.Annotation(text)
-                                    .setFont("Times", 12, "normal")
-                                    .setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
-                                vfNote.addModifier(annotation, 0);
-                            });
-                        }
+                        // Lyrics generation removed (Handled in Drawer for aligned layout)
 
                          // Handle Grace Notes
                         const combinedGraceNotes = [...graceNotesQueue, ...graceNotes];
@@ -312,12 +323,14 @@ export class VexFlowMusicSheetCalculator {
                          const formatter = new VF.Formatter();
                          const w = formatter.joinVoices(tempVoices).preCalculateMinTotalWidth(tempVoices);
                          
-                         let padding = 20;
-                         if (measure.clefs[s] || measure.measureNumber === 1) padding += 40;
-                         if (measure.rhythms[s] || measure.measureNumber === 1) padding += 30;
-                         if (measure.keys[s]) padding += 20;
+                         // Increased padding and added spacing multiplier for wider layout (Match OSMD)
+                         let padding = 40; // Base padding increased from 20 to 40
+                         if (measure.clefs[s] || measure.measureNumber === 1) padding += 50;
+                         if (measure.rhythms[s] || measure.measureNumber === 1) padding += 40;
+                         if (measure.keys[s]) padding += 30;
                          
-                         minWidth = Math.max(minWidth, w + padding);
+                         // Apply 1.3x multiplier to voice content width for "breathed" layout
+                         minWidth = Math.max(minWidth, (w * 1.3) + padding);
                     } catch(e) {}
                 }
             }
@@ -340,7 +353,8 @@ export class VexFlowMusicSheetCalculator {
                     keySignature: measure.keys[s] || measure.measureNumber === 1 ? currentKeyStrs[s] : undefined, // Draw if explicit or start
                     timeSignature: measure.rhythms[s] ? currentTimeStrs[s] : undefined,
                     voltaType: s === 0 ? voltaType : VF.Volta.type.NONE,
-                    voltaNumber: s === 0 ? measure.endingNumber : ""
+                    voltaNumber: s === 0 ? measure.endingNumber : "",
+                    label: measure.measureNumber === 1 ? staffInstrumentLabels[s] : undefined
                 });
             }
 

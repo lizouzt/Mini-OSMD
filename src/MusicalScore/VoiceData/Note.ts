@@ -33,6 +33,7 @@ export class Note {
     public articulations: string[] = []; // e.g. "staccato", "accent", "fermata"
     public lyrics: Lyric[] = []; // Changed from single lyric
     public dynamics: string[] = []; // e.g. "p", "f", "mf"
+    public printObject: boolean = true; // Default to true
 
     constructor(pitch: Pitch, length: Fraction, durationType: string = "quarter", voiceId: string = "1", timestamp: Fraction = new Fraction(0, 1), staffId: number = 1) {
         this.pitch = pitch;
