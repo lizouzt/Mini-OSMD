@@ -382,16 +382,9 @@ export class VexFlowMusicSheetCalculator {
             currentSystemWidth += measureData.width;
         }
 
-        // Add last system and justify it to ensure it fills the container
+        // Add last system
         if (currentSystem.length > 0) {
-            const extraSpace = containerWidth - currentSystemWidth;
-            // Only stretch if it's reasonable (e.g. not a single measure in a wide line)
-            // But to strictly "fill display area", we stretch.
-            // OSMD StretchLastSystemLine option controls this. We'll default to True for this fix.
-            if (extraSpace > 0) {
-                 const extraPerMeasure = extraSpace / currentSystem.length;
-                 currentSystem.forEach(m => m.width += extraPerMeasure);
-            }
+            // No justification for the last system to prevent stretching artifacts
             systems.push(currentSystem);
         }
 

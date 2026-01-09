@@ -3,9 +3,9 @@ import * as VF from "vexflow";
 export class VexFlowMusicSheetDrawer {
     constructor(container: HTMLElement) {
         this.container = container;
-        // Check if container already has an SVG (from previous drawer) and clear it?
-        // Better to let the owner manage lifecycle, or clear here.
-        this.container.innerHTML = ""; // Simple clear for single-drawer model
+        // Only remove existing SVGs to preserve Cursor element
+        const svgs = this.container.querySelectorAll("svg");
+        svgs.forEach(svg => this.container.removeChild(svg));
         
         this.renderer = new VF.Renderer(container as HTMLDivElement, VF.Renderer.Backends.SVG);
         this.ctx = this.renderer.getContext();
@@ -120,7 +120,13 @@ export class VexFlowMusicSheetDrawer {
                         });
 
                         // Format to width
-                        const formatter = new VF.Formatter().joinVoices(voices).format(voices, measureData.width - 50);
+                        // Dynamic width calculation based on Stave's actual modifier width (clef, key, time sig)
+                        const noteStartX = stave.getNoteStartX();
+                        const startOffset = noteStartX - stave.getX();
+                        // Available width = Total Width - Start Offset - End Padding (10)
+                        const availableWidth = Math.max(50, measureData.width - startOffset - 10);
+                        
+                        const formatter = new VF.Formatter().joinVoices(voices).format(voices, availableWidth);
                         
                         voices.forEach((v: any) => v.draw(this.ctx, stave));
                         

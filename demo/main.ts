@@ -1,4 +1,4 @@
-import { OpenSheetMusicDisplay } from "../src/index";
+import { OpenSheetMusicDisplay, CursorType } from "../src/index";
 // @ts-ignore
 import beethovenUrl from '/demo/Beethoven_AnDieFerneGeliebte.xml?url';
 // @ts-ignore

@@ -208,7 +208,8 @@ export class Cursor {
             const vfNote = this.noteMap!.get(note);
             if (vfNote) {
                 const bbox = vfNote.getBoundingBox();
-                if (bbox) {
+                // Check for valid bbox (Staves start at x=10, so x<5 is likely an artifact/hidden note)
+                if (bbox && bbox.getX() > 5) {
                     found = true;
                     const x = bbox.getX() * zoom;
                     const w = bbox.getW() * zoom;
