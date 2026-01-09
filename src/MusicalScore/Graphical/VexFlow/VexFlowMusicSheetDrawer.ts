@@ -30,7 +30,7 @@ export class VexFlowMusicSheetDrawer {
         // Assuming we reuse drawer:
         // Try to overwrite scale. 
         // VexFlow setScale usually sets a transform on the main group.
-        this.ctx.scale(zoom, zoom);
+        // this.ctx.scale(zoom, zoom); // REMOVED: ViewBox scaling handles zoom. Double scaling caused whitespace.
         
         // Native Dark Mode Styling
         const color = darkMode ? "#FFFFFF" : "#000000";
@@ -210,14 +210,17 @@ export class VexFlowMusicSheetDrawer {
         }
         
         if (this.renderer.resize) {
-            // Resize logic: 
-            // VexFlow renderer.resize(w, h) sets SVG width/height and viewBox.
-            // If scale() was called, we need to ensure viewBox is correct.
-            // But VexFlow's SVGContext doesn't automatically adjust viewBox for scale.
-            // We usually want: SVG size = container size. ViewBox = scaled size? No.
-            // If we use ctx.scale(2), we draw 2x larger. We need 2x pixels.
-            // So resizing to (width, height) where height is scaled is correct.
-            this.renderer.resize(this.container.clientWidth, (y + 100) * zoom);
+            // Fix Zoom: Use ViewBox scaling instead of Context scaling to prevent double-scale / whitespace
+            const visualWidth = this.container.clientWidth;
+            const logicalHeight = y + 50; // Use actual content height logic
+            const visualHeight = logicalHeight * zoom;
+            
+            // Set SVG attributes (visual size)
+            this.renderer.resize(visualWidth, visualHeight);
+            
+            // Set ViewBox (logical size)
+            const logicalWidth = visualWidth / zoom;
+            this.ctx.svg.setAttribute("viewBox", `0 0 ${logicalWidth} ${logicalHeight}`);
         }
 
         return measureBounds;
