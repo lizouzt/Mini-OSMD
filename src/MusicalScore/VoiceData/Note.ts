@@ -35,6 +35,7 @@ export class Note {
     public dynamics: string[] = []; // e.g. "p", "f", "mf"
     public words: string[] = []; // e.g. "Allegro", "crescendo" (text)
     public accidentalXml?: string; // e.g. "natural", "sharp", "flat"
+    public stemDirectionXml?: string; // "up" | "down" | "double" | "none"
     public printObject: boolean = true; // Default to true
 
     constructor(pitch: Pitch, length: Fraction, durationType: string = "quarter", voiceId: string = "1", timestamp: Fraction = new Fraction(0, 1), staffId: number = 1) {

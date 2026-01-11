@@ -174,6 +174,17 @@ export class VexFlowMusicSheetDrawer {
                             }
                         }
 
+
+                        // Force Apply Stem Direction (override Formatter)
+                        voices.forEach((v: any) => {
+                            v.getTickables().forEach((t: any) => {
+                                if (t.sourceNote && t.sourceNote.stemDirectionXml) {
+                                    if (t.sourceNote.stemDirectionXml === "up") t.setStemDirection(VF.Stem.UP);
+                                    else if (t.sourceNote.stemDirectionXml === "down") t.setStemDirection(VF.Stem.DOWN);
+                                }
+                            });
+                        });
+
                         voices.forEach((v: any) => v.draw(this.ctx, stave));
 
                         if (staffData.beams) {

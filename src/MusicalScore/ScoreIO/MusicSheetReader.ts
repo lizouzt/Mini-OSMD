@@ -358,6 +358,16 @@ export class MusicSheetReader {
             note.accidentalXml = accidental;
         }
 
+        const stem = xmlNote.getElementsByTagName("stem")[0]?.textContent;
+        if (stem) {
+            note.stemDirectionXml = stem;
+            // console.log(`[Reader] Note Stem parsed: ${stem} for pitch ${pitch.toString()}`);
+        }
+
+        if (pitch.step === 11 || pitch.step === 2) { // B or D
+            console.log(`[Reader] Parsed Note: Step=${pitch.step} Alter=${pitch.alter} Oct=${pitch.octave} Stem=${stem}`);
+        }
+
         const printObject = xmlNote.getAttribute("print-object");
         if (printObject === "no") {
             note.printObject = false;

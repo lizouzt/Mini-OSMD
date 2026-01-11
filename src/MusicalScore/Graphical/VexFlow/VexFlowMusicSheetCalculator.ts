@@ -205,6 +205,19 @@ export class VexFlowMusicSheetCalculator {
                             });
                         }
 
+                        // Apply Stem Direction from XML
+                        if (mainNote.stemDirectionXml) {
+                            if (mainNote.stemDirectionXml === "up") vfNote.setStemDirection(VF.Stem.UP);
+                            else if (mainNote.stemDirectionXml === "down") vfNote.setStemDirection(VF.Stem.DOWN);
+                            console.log(`[Calculator] Applied Stem ${mainNote.stemDirectionXml} to ${keys.join(',')}`);
+                        } else {
+                            // console.log(`[Calculator] No Stem XML for ${keys.join(',')}`);
+                        }
+
+                        if (keys.some(k => k.includes('b/') || k.includes('d/'))) {
+                            console.log(`[Calculator] Created Note: Keys=${keys.join(',')} StemXML=${mainNote.stemDirectionXml}`);
+                        }
+
                         // Fix Ticks for Tuplets/unusual durations
                         try {
                             // Calculate total ticks for the note based on MusicXML duration
