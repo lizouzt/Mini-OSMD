@@ -17,32 +17,32 @@ export class MusicSheetReader {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
         const sheet = new MusicSheet();
-        
+
         const parts = xmlDoc.getElementsByTagName("part");
         let globalStaffOffset = 0;
 
         for (let p = 0; p < parts.length; p++) {
             const part = parts[p];
-            const partId = part.getAttribute("id") || `P${p+1}`;
+            const partId = part.getAttribute("id") || `P${p + 1}`;
             const partName = part.getElementsByTagName("part-name")[0]?.textContent || "";
-            
+
             const measures = part.getElementsByTagName("measure");
-            
+
             // Per-part state
             let divisions = 4;
-            let partMaxStaves = 1; 
+            let partMaxStaves = 1;
 
             // We need to parse attributes first to know max staves for Instrument
             // But attributes are inside measures. 
             // Quick scan of first measure for staves?
             if (measures.length > 0) {
-                 const attr = measures[0].getElementsByTagName("attributes")[0];
-                 if (attr) {
-                     const stavesNode = attr.getElementsByTagName("staves")[0];
-                     if (stavesNode) partMaxStaves = parseInt(stavesNode.textContent || "1");
-                 }
+                const attr = measures[0].getElementsByTagName("attributes")[0];
+                if (attr) {
+                    const stavesNode = attr.getElementsByTagName("staves")[0];
+                    if (stavesNode) partMaxStaves = parseInt(stavesNode.textContent || "1");
+                }
             }
-            
+
             const instrument = new Instrument(partId, partName, partMaxStaves);
             sheet.instruments.push(instrument);
 
@@ -58,7 +58,7 @@ export class MusicSheetReader {
             for (let i = 0; i < measures.length; i++) {
                 const xmlMeasure = measures[i];
                 const measureNumber = parseInt(xmlMeasure.getAttribute("number") || "0");
-                
+
                 // Get or Create SourceMeasure
                 // We assume parts are aligned by index. 
                 // Ideally we should map by measureNumber, but simple index alignment is common for MusicXML.
@@ -75,7 +75,7 @@ export class MusicSheetReader {
                 if (attributes) {
                     const divsNode = attributes.getElementsByTagName("divisions")[0];
                     if (divsNode) divisions = parseInt(divsNode.textContent || "4");
-                    
+
                     const stavesNode = attributes.getElementsByTagName("staves")[0];
                     if (stavesNode) {
                         const val = parseInt(stavesNode.textContent || "1");
@@ -91,7 +91,7 @@ export class MusicSheetReader {
                         let clefEnum = ClefEnum.G;
                         if (sign === "F") clefEnum = ClefEnum.F;
                         if (sign === "C") clefEnum = ClefEnum.C;
-                        
+
                         const globalIndex = globalStaffOffset + (num - 1);
                         measure.clefs[globalIndex] = new ClefInstruction(clefEnum, line);
                     }
@@ -102,7 +102,7 @@ export class MusicSheetReader {
                         const num = parseInt(key.getAttribute("number") || "1");
                         const fifths = parseInt(key.getElementsByTagName("fifths")[0]?.textContent || "0");
                         const mode = key.getElementsByTagName("mode")[0]?.textContent || "major";
-                        
+
                         const globalIndex = globalStaffOffset + (num - 1);
                         measure.keys[globalIndex] = new KeyInstruction(fifths, mode);
                     }
@@ -113,10 +113,23 @@ export class MusicSheetReader {
                         const num = parseInt(time.getAttribute("number") || "1");
                         const beats = parseInt(time.getElementsByTagName("beats")[0]?.textContent || "4");
                         const beatType = parseInt(time.getElementsByTagName("beat-type")[0]?.textContent || "4");
-                        
+
                         const globalIndex = globalStaffOffset + (num - 1);
                         measure.rhythms[globalIndex] = new RhythmInstruction(beats, beatType);
                     }
+                }
+
+
+
+                // Parse Print (System/Page Breaks)
+                const prints = xmlMeasure.getElementsByTagName("print");
+                for (let k = 0; k < prints.length; k++) {
+                    const print = prints[k];
+                    const newSystem = print.getAttribute("new-system");
+                    const newPage = print.getAttribute("new-page");
+                    console.log(`Measure ${measureNumber} print: newSystem=${newSystem}`);
+                    if (newSystem === "yes") measure.printNewSystem = true;
+                    if (newPage === "yes") measure.printNewPage = true;
                 }
 
                 // Parse BarLines
@@ -124,19 +137,19 @@ export class MusicSheetReader {
                 for (let k = 0; k < barlines.length; k++) {
                     const bl = barlines[k];
                     const location = bl.getAttribute("location");
-                    
+
                     // Ending (Volta)
                     const ending = bl.getElementsByTagName("ending")[0];
                     if (ending) {
-                         const num = ending.getAttribute("number") || "";
-                         const type = ending.getAttribute("type") || "start";
-                         measure.endingNumber = num;
-                         
-                         if (type === "start") {
-                             measure.endingType = measure.endingType === EndingType.Stop ? EndingType.StartStop : EndingType.Start;
-                         } else if (type === "stop" || type === "discontinue") {
-                             measure.endingType = measure.endingType === EndingType.Start ? EndingType.StartStop : EndingType.Stop;
-                         }
+                        const num = ending.getAttribute("number") || "";
+                        const type = ending.getAttribute("type") || "start";
+                        measure.endingNumber = num;
+
+                        if (type === "start") {
+                            measure.endingType = measure.endingType === EndingType.Stop ? EndingType.StartStop : EndingType.Start;
+                        } else if (type === "stop" || type === "discontinue") {
+                            measure.endingType = measure.endingType === EndingType.Start ? EndingType.StartStop : EndingType.Stop;
+                        }
                     }
 
                     if (location === "right" || !location) {
@@ -146,8 +159,8 @@ export class MusicSheetReader {
                         else if (barStyle === "light-heavy") measure.endBarType = BarLineType.End;
                         else if (barStyle === "light-light") measure.endBarType = BarLineType.Double;
                     } else if (location === "left") {
-                         const repeat = bl.getElementsByTagName("repeat")[0];
-                         if (repeat && repeat.getAttribute("direction") === "forward") measure.endBarType = BarLineType.RepeatBegin;
+                        const repeat = bl.getElementsByTagName("repeat")[0];
+                        if (repeat && repeat.getAttribute("direction") === "forward") measure.endBarType = BarLineType.RepeatBegin;
                     }
                 }
 
@@ -155,6 +168,7 @@ export class MusicSheetReader {
                 const children = xmlMeasure.children;
                 let lastNoteTimestamp = new Fraction(0, 1);
                 let pendingDynamics: string[] = [];
+                let pendingWords: string[] = [];
 
                 for (let j = 0; j < children.length; j++) {
                     const child = children[j];
@@ -165,6 +179,12 @@ export class MusicSheetReader {
                             const dyns = type.getElementsByTagName("dynamics")[0];
                             if (dyns) {
                                 for (let d = 0; d < dyns.children.length; d++) pendingDynamics.push(dyns.children[d].tagName);
+                            }
+                            // Words
+                            const words = type.getElementsByTagName("words");
+                            for (let w = 0; w < words.length; w++) {
+                                const text = words[w].textContent;
+                                if (text) pendingWords.push(text);
                             }
                             // Wedge
                             const wedge = type.getElementsByTagName("wedge")[0];
@@ -199,13 +219,17 @@ export class MusicSheetReader {
                         if (note) {
                             // Update Staff ID with Offset
                             note.staffId += globalStaffOffset;
-                            
+
                             note.isGrace = isGrace;
                             if (pendingDynamics.length > 0 && !isChord) {
                                 note.dynamics.push(...pendingDynamics);
                                 pendingDynamics = [];
                             }
-                            
+                            if (pendingWords.length > 0 && !isChord) {
+                                note.words.push(...pendingWords);
+                                pendingWords = [];
+                            }
+
                             if (activeWedge) {
                                 if (!activeWedge.startNote) activeWedge.startNote = note;
                                 activeWedge.endNote = note;
@@ -275,7 +299,7 @@ export class MusicSheetReader {
                                 }
                                 if (notations.getElementsByTagName("fermata").length > 0) note.articulations.push("fermata");
                             }
-                            
+
                             const lyrics = child.getElementsByTagName("lyric");
                             for (let l = 0; l < lyrics.length; l++) {
                                 const lyric = lyrics[l];
@@ -307,10 +331,10 @@ export class MusicSheetReader {
         const voice = xmlNote.getElementsByTagName("voice")[0]?.textContent || "1";
         const staff = parseInt(xmlNote.getElementsByTagName("staff")[0]?.textContent || "1");
         const dur = parseInt(xmlNote.getElementsByTagName("duration")[0]?.textContent || "1");
-        
+
         const rest = xmlNote.getElementsByTagName("rest")[0];
         const pitchEl = xmlNote.getElementsByTagName("pitch")[0];
-        
+
         let pitch: Pitch;
         let isRest = false;
 
@@ -328,12 +352,17 @@ export class MusicSheetReader {
 
         const note = new Note(pitch, new Fraction(dur, divisions * 4), type, voice, timestamp, staff);
         note.isRest = isRest;
-        
+
+        const accidental = xmlNote.getElementsByTagName("accidental")[0]?.textContent;
+        if (accidental) {
+            note.accidentalXml = accidental;
+        }
+
         const printObject = xmlNote.getAttribute("print-object");
         if (printObject === "no") {
             note.printObject = false;
         }
-        
+
         return note;
     }
 }

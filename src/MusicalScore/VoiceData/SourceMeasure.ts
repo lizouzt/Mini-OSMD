@@ -26,17 +26,21 @@ export class SourceMeasure {
 
     public measureNumber: number;
     public notes: Note[] = [];
-    
+
     public clefs: ClefInstruction[] = [];
     public keys: KeyInstruction[] = [];
     public rhythms: RhythmInstruction[] = [];
-    
+
     public endBarType: BarLineType = BarLineType.Single;
-    
+
     public endingType: EndingType = EndingType.None;
     public endingNumber: string = "";
+
+    public printNewSystem: boolean = false;
+    public printNewPage: boolean = false;
 
     public addNote(note: Note): void {
         this.notes.push(note);
     }
 }
+

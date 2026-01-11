@@ -20,10 +20,10 @@ export class Note {
     public staffId: number;
     /** The absolute timestamp within the measure (in discrete units, e.g. 1/16th). */
     public timestamp: Fraction;
-    
+
     public slurStarts: Slur[] = [];
     public slurEnds: Slur[] = [];
-    
+
     public tieStarts: Tie[] = [];
     public tieEnds: Tie[] = [];
 
@@ -33,6 +33,8 @@ export class Note {
     public articulations: string[] = []; // e.g. "staccato", "accent", "fermata"
     public lyrics: Lyric[] = []; // Changed from single lyric
     public dynamics: string[] = []; // e.g. "p", "f", "mf"
+    public words: string[] = []; // e.g. "Allegro", "crescendo" (text)
+    public accidentalXml?: string; // e.g. "natural", "sharp", "flat"
     public printObject: boolean = true; // Default to true
 
     constructor(pitch: Pitch, length: Fraction, durationType: string = "quarter", voiceId: string = "1", timestamp: Fraction = new Fraction(0, 1), staffId: number = 1) {

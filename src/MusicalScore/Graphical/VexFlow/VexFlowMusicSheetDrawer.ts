@@ -64,7 +64,7 @@ export class VexFlowMusicSheetDrawer {
             for (const measureData of system) {
                 // Group Measure Elements (OSMD Structure Parity)
                 if (this.ctx.openGroup) {
-                    this.ctx.openGroup("vf-measure", `measure-${measureData.measureNumber}`);
+                    this.ctx.openGroup("measure", `measure-${measureData.measureNumber}`);
                 }
 
                 // --- Hybrid Strategy: Try Global Formatting, Fallback to Per-Staff ---
