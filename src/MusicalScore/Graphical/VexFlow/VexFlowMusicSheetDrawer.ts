@@ -72,7 +72,7 @@ export class VexFlowMusicSheetDrawer {
                 const allVoicesInMeasure: any[] = [];
                 // We need to cache voices to reuse them (avoid re-creating)
                 measureData.staves.forEach((staffData: any) => {
-                    const res = this.createVoices(staffData);
+                    const res = this.createVoices(staffData, measureData.maxTicks);
                     staffData.tempVoices = res.voices;
                     staffData.tempAllNotes = res.allNotes;
                     allVoicesInMeasure.push(...res.voices);
@@ -86,6 +86,16 @@ export class VexFlowMusicSheetDrawer {
                         globalFormatSuccess = true;
                     } catch (e) {
                         console.warn(`[Layout] Measure ${measureData.measureNumber}: Global alignment failed. Fallback to per-staff.`, e);
+                        // Detailed Diagnosis
+                        allVoicesInMeasure.forEach((v: any, i) => {
+                            try {
+                                const ticks = v.ticksUsed ? v.ticksUsed.value() : "N/A";
+                                const total = v.totalTicks ? v.totalTicks.value() : "N/A";
+                                console.warn(`Voice ${i}: ActualTicks=${ticks}, Expected=${total}, NoteCount=${v.getTickables().length}`);
+                            } catch (err) {
+                                console.warn(`Voice ${i} error`, err);
+                            }
+                        });
                     }
                 }
                 // ---------------------------------------------------------------------
@@ -170,14 +180,32 @@ export class VexFlowMusicSheetDrawer {
                             staffData.beams.forEach((beam: any) => {
                                 if (beam.setStyle) beam.setStyle(style);
                                 if (beam.render_options) beam.render_options.beam_width = 2;
-                                beam.setContext(this.ctx).draw();
+                                try {
+                                    beam.setContext(this.ctx).draw();
+                                } catch (e) {
+                                    console.warn(`[Beam Draw Error] Staff ${index} Beam Error:`, e);
+                                    if (beam.notes) {
+                                        beam.notes.forEach((n: any, i: number) => {
+                                            console.warn(`Node ${i}:`, n.getCategory ? n.getCategory() : 'unknown', n);
+                                        });
+                                    }
+                                }
                             });
                         }
                         if (staffData.vfTuplets) {
                             staffData.vfTuplets.forEach((t: any) => {
                                 this.ctx.setFillStyle(color);
                                 this.ctx.setStrokeStyle(color);
-                                t.setContext(this.ctx).draw();
+                                try {
+                                    t.setContext(this.ctx).draw();
+                                } catch (e) {
+                                    console.warn(`[Tuplet Draw Error] Staff ${index} Tuplet Error:`, e);
+                                    if (t.notes) {
+                                        t.notes.forEach((n: any, i: number) => {
+                                            console.warn(`Tuplet Node ${i}:`, n.getCategory ? n.getCategory() : 'unknown', n);
+                                        });
+                                    }
+                                }
                             });
                         }
 
@@ -247,7 +275,11 @@ export class VexFlowMusicSheetDrawer {
             this.ctx.setStrokeStyle(color);
             this.ctx.setFillStyle(color);
             curves.forEach(curve => {
-                curve.setContext(this.ctx).draw();
+                try {
+                    curve.setContext(this.ctx).draw();
+                } catch (e) {
+                    console.warn(`[Curve Draw Error] Curve Error:`, e);
+                }
             });
         }
 
@@ -284,7 +316,7 @@ export class VexFlowMusicSheetDrawer {
                 const upperStaff = measure.staves[i];
                 const lowerStaff = measure.staves[i + 1];
 
-                const upperBottom = this.measureStaffBottom(upperStaff, measure.width);
+                const upperBottom = this.measureStaffBottom(upperStaff, measure.width, measure.maxTicks);
                 const lowerTop = this.measureStaffTop(lowerStaff, measure.width);
 
                 const padding = 10;
@@ -299,12 +331,12 @@ export class VexFlowMusicSheetDrawer {
         return offsets;
     }
 
-    private measureStaffBottom(staffData: any, width: number): number {
+    private measureStaffBottom(staffData: any, width: number, maxTicks: number = 0): number {
         let maxY = 80;
         const voiceIds = Object.keys(staffData.vfVoices || {});
         if (voiceIds.length === 0) return maxY;
 
-        const { voices, allNotes } = this.createVoices(staffData);
+        const { voices, allNotes } = this.createVoices(staffData, maxTicks);
         const dummyStave = new VF.Stave(0, 0, width);
         new VF.Formatter().joinVoices(voices).format(voices, width - 50);
 
@@ -340,10 +372,13 @@ export class VexFlowMusicSheetDrawer {
         return minY;
     }
 
-    private createVoices(staffData: any): { voices: any[], allNotes: any[] } {
+    private createVoices(staffData: any, maxTicks: number = 0): { voices: any[], allNotes: any[] } {
         let numBeats = 4;
         let beatValue = 4;
-        if (staffData.timeSignature) {
+        if (maxTicks > 0) {
+            // Normalize capacity to maxTicks
+            numBeats = maxTicks / 4096;
+        } else if (staffData.timeSignature) {
             const parts = staffData.timeSignature.split("/");
             numBeats = parseInt(parts[0]);
             beatValue = parseInt(parts[1]);
@@ -354,12 +389,33 @@ export class VexFlowMusicSheetDrawer {
 
         const voiceIds = Object.keys(staffData.vfVoices || {});
         for (const vid of voiceIds) {
-            const notes = staffData.vfVoices[vid];
+            const notes = staffData.vfVoices[vid] || [];
+
+            // PADDING STRATEGY (Duplicated from Calculator)
+            let currentTicks = 0;
+            notes.forEach((note: any) => {
+                const t = note.ticks ? note.ticks.value() : 0;
+                currentTicks += t;
+            });
+
+            const voiceNotes = [...notes]; // Copy to avoid mutating original repeatedly if re-called
+
+            if (maxTicks > 0 && currentTicks < maxTicks) {
+                const diff = maxTicks - currentTicks;
+                const ghost = new VF.GhostNote({ duration: "b" });
+                if ((ghost as any).setTicks) {
+                    (ghost as any).setTicks(new VF.Fraction(diff, 1));
+                } else {
+                    (ghost as any).ticks = new VF.Fraction(diff, 1);
+                }
+                voiceNotes.push(ghost);
+            }
+
             const voice = new VF.Voice({ numBeats: numBeats, beatValue: beatValue });
             voice.setStrict(false);
-            voice.addTickables(notes);
+            voice.addTickables(voiceNotes);
             voices.push(voice);
-            allNotes.push(...notes);
+            allNotes.push(...notes); // Don't include ghost notes in allNotes for drawing? GhostNotes draw nothing anyway.
         }
         return { voices, allNotes };
     }

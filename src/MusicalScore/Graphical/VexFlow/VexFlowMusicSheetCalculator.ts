@@ -371,18 +371,70 @@ export class VexFlowMusicSheetCalculator {
 
             // Calculate Width (Max of all staves)
             let minWidth = 150;
+
+            // 0. Pre-calculate Global Max Ticks for the ENTIRE measure (all staves)
+            // This ensures strict alignment across all staves (e.g. Piano Grand Staff)
+            let measureMaxTicks = 0;
+            for (let s = 0; s <= maxStaffIndex; s++) {
+                for (const vid in staffVoices[s]) {
+                    let ticks = 0;
+                    staffVoices[s][vid].forEach((note: any) => {
+                        const noteTicks = note.ticks ? note.ticks.value() : 0;
+                        ticks += noteTicks;
+                    });
+                    if (ticks > measureMaxTicks) measureMaxTicks = ticks;
+                }
+            }
+
             // Iterate all staves to find max required width
             for (let s = 0; s <= maxStaffIndex; s++) {
                 const tempVoices: any[] = [];
+
+
+                // 1. Create Voices with Normalized Duration (Global Measure Max Ticks)
                 for (const vid in staffVoices[s]) {
+                    // Default to Time Signature if empty or zero (should-n't happen often)
                     let numBeats = 4;
                     let beatValue = 4;
-                    if (currentTimeStrs[s]) {
+
+                    if (measureMaxTicks > 0) {
+                        // Using Constant 16384 for Resolution (Whole Note)
+                        // Ticks per beat (Quarter) = 16384 / 4 = 4096.
+                        numBeats = measureMaxTicks / 4096;
+                    } else if (currentTimeStrs[s]) {
                         const parts = currentTimeStrs[s].split("/");
                         numBeats = parseInt(parts[0]);
                         beatValue = parseInt(parts[1]);
                     }
+
+                    // PADDING STRATEGY:
+                    // Ensure voice is fully filled to measureMaxTicks to satisfy joinVoices()
+                    let currentTicks = 0;
+                    staffVoices[s][vid].forEach((note: any) => {
+                        const t = note.ticks ? note.ticks.value() : 0;
+                        currentTicks += t;
+                    });
+
+                    if (measureMaxTicks > 0 && currentTicks < measureMaxTicks) {
+                        const diff = measureMaxTicks - currentTicks;
+                        // console.log(`Padding Voice ${vid} in Staff ${s}: ${currentTicks} -> ${measureMaxTicks} (+${diff})`);
+                        // Create GhostNote for padding
+                        const ghost = new VF.GhostNote({ duration: "b" });
+                        // ghost.setTicks(new VF.Fraction(diff, 1)); // VexFlow 4/5 way?
+                        // If setTicks not available or simple, try property access or constructor if possible.
+                        // Standard VF check: Note uses setTicks(Fraction).
+                        // However, to avoid 'setTicks not function' error if types differ, cast to any.
+                        if ((ghost as any).setTicks) {
+                            (ghost as any).setTicks(new VF.Fraction(diff, 1));
+                        } else {
+                            // Fallback for some versions: manually set ticks
+                            (ghost as any).ticks = new VF.Fraction(diff, 1);
+                        }
+                        staffVoices[s][vid].push(ghost);
+                    }
+
                     const voice = new VF.Voice({ numBeats: numBeats, beatValue: beatValue });
+                    voice.setStrict(false);
                     voice.addTickables(staffVoices[s][vid]);
                     tempVoices.push(voice);
                 }
@@ -410,7 +462,16 @@ export class VexFlowMusicSheetCalculator {
                 // Beams
                 const allBeams: any[] = [];
                 for (const vid in staffVoices[s]) {
-                    const beams = VF.Beam.generateBeams(staffVoices[s][vid]);
+                    // Filter out GhostNotes (Padding) from beaming to avoid "NoStem" crash
+                    const beamNotes = staffVoices[s][vid].filter((n: any) => {
+                        // Check instance OR category (safer)
+                        const isGhost = (n instanceof VF.GhostNote) || (n.getCategory && n.getCategory() === 'ghostnote');
+                        return !isGhost;
+                    });
+                    if (staffVoices[s][vid].length !== beamNotes.length) {
+                        console.warn(`[Beaming] Filtered GhostNotes. Staff ${s} Voice ${vid}: ${staffVoices[s][vid].length} -> ${beamNotes.length}`);
+                    }
+                    const beams = VF.Beam.generateBeams(beamNotes);
                     allBeams.push(...beams);
                 }
 
@@ -445,6 +506,7 @@ export class VexFlowMusicSheetCalculator {
             const measureData = {
                 measureNumber: measure.measureNumber,
                 measureIndex: sheet.sourceMeasures.indexOf(measure),
+                maxTicks: measureMaxTicks, // Pass global max ticks to Drawer
                 staves: stavesData, // New structure
                 width: minWidth,
                 endBarLineType: endBarLineType
