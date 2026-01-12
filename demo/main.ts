@@ -1,4 +1,4 @@
-import { OpenSheetMusicDisplay, CursorType } from "../src/index";
+import { OpenSheetMusicDisplay, CursorType, MusicSheetReader } from "../src/index";
 // @ts-ignore
 import beethovenUrl from '/demo/Beethoven_AnDieFerneGeliebte.xml?url';
 // @ts-ignore
@@ -134,22 +134,32 @@ if (container && selectElement) {
             // container.innerHTML = ""; // DO NOT CLEAR: Destroys Renderer/Cursor
 
             console.log(`Loading: ${value}`);
+            console.log(`Loading: ${value}`);
             let xmlContent = "";
-            
+
+
+
             if (value === "builtin") {
                 xmlContent = builtInXML;
             } else {
                 const score = scores.find(s => s.value === value);
                 if (score && score.url) {
-                   // In dev, url is file path. In prod, might need fetch.
-                   // Vite ?url import returns the URL string.
-                   const response = await fetch(score.url);
-                   if (!response.ok) throw new Error(`Failed to fetch ${score.url}`);
-                   xmlContent = await response.text();
+                    // In dev, url is file path. In prod, might need fetch.
+                    // Vite ?url import returns the URL string.
+                    const response = await fetch(score.url);
+                    if (!response.ok) throw new Error(`Failed to fetch ${score.url}`);
+                    xmlContent = await response.text();
                 }
             }
-            
+
             await osmd.load(xmlContent);
+            if (value === "beethoven" && osmd.Sheet) {
+                // Replicate Official Demo setting for this specific score
+                osmd.Sheet.Transpose = -7;
+            } else if (osmd.Sheet) {
+                osmd.Sheet.Transpose = 0; // Reset for others
+            }
+
             osmd.render();
         } catch (e) {
             console.error("Error loading score:", e);
@@ -194,7 +204,7 @@ if (container && selectElement) {
             if (files && files.length > 0) {
                 const file = files[0];
                 console.log("File selected:", file.name);
-                
+
                 try {
                     // Stop playing
                     if (playInterval) togglePlay();
@@ -213,9 +223,9 @@ if (container && selectElement) {
 
                     await osmd.load(content);
                     osmd.render();
-                    
+
                     // Reset selector to allow re-selecting same built-in if needed
-                    selectElement.value = ""; 
+                    selectElement.value = "";
                 } catch (e) {
                     console.error("Error loading file:", e);
                     alert("Error loading file: " + e);
@@ -237,7 +247,7 @@ if (container && selectElement) {
     cursorNextBtn?.addEventListener("click", () => osmd.cursor.next());
     cursorPrevBtn?.addEventListener("click", () => osmd.cursor.prev());
     cursorPlayBtn?.addEventListener("click", togglePlay);
-    
+
     cursorShowBtn?.addEventListener("click", () => {
         if (osmd.cursor.hidden) {
             osmd.cursor.show();
@@ -261,9 +271,9 @@ if (container && selectElement) {
     window.addEventListener("keydown", (e) => {
         if (e.key === "ArrowRight") osmd.cursor.next();
         if (e.key === "ArrowLeft") osmd.cursor.prev();
-        if (e.key === " ") { 
-             e.preventDefault();
-             togglePlay(); 
+        if (e.key === " ") {
+            e.preventDefault();
+            togglePlay();
         }
     });
 

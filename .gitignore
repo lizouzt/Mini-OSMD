@@ -67,3 +67,6 @@ package-lock.json
 
 #local env files
 webpack.local.js
+
+#temp file
+public/temp

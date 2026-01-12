@@ -13,6 +13,8 @@ import { Wedge, WedgeType } from "../VoiceData/Wedge";
 import { OctaveShift, OctaveShiftType } from "../VoiceData/OctaveShift";
 
 export class MusicSheetReader {
+    public static transpose: number = 0;
+
     public static readMusicXML(xmlString: string): MusicSheet {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
@@ -80,6 +82,18 @@ export class MusicSheetReader {
                     if (stavesNode) {
                         const val = parseInt(stavesNode.textContent || "1");
                         partMaxStaves = Math.max(partMaxStaves, val);
+                    }
+
+                    // Parse Transpose
+                    const transposeNode = attributes.getElementsByTagName("transpose")[0];
+                    if (transposeNode) {
+                        const chromatic = transposeNode.getElementsByTagName("chromatic")[0];
+                        if (chromatic) {
+                            const val = parseInt(chromatic.textContent || "0");
+                            // In OSMD, this is typically stored in PlaybackTranspose
+                            // We do NOT set visual Transpose here by default (OSMD behavior)
+                            instrument.PlaybackTranspose = val;
+                        }
                     }
 
                     const clefs = attributes.getElementsByTagName("clef");
@@ -345,7 +359,9 @@ export class MusicSheetReader {
             const step = NoteEnum[pitchEl.getElementsByTagName("step")[0]?.textContent as keyof typeof NoteEnum] || NoteEnum.C;
             const oct = parseInt(pitchEl.getElementsByTagName("octave")[0]?.textContent || "4");
             const alt = parseInt(pitchEl.getElementsByTagName("alter")[0]?.textContent || "0");
-            pitch = new Pitch(step, oct, alt);
+            let p = new Pitch(step, oct, alt);
+            // Transpose logic moved to GraphicalNote/Calculator
+            pitch = p;
         } else {
             return undefined;
         }

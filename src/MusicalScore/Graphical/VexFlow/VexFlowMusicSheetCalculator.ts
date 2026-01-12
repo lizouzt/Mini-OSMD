@@ -1,7 +1,7 @@
 import * as VF from "vexflow";
 import { MusicSheet } from "../../MusicSheet";
 import { GraphicalMusicSheet } from "../GraphicalMusicSheet";
-import { NoteEnum } from "../../VoiceData/Pitch";
+import { Pitch, NoteEnum } from "../../VoiceData/Pitch";
 import { ClefEnum } from "../../VoiceData/Instructions/ClefInstruction";
 import { BarLineType, EndingType } from "../../VoiceData/SourceMeasure";
 import { WedgeType } from "../../VoiceData/Wedge";
@@ -169,10 +169,20 @@ export class VexFlowMusicSheetCalculator {
                         if (mainNote.isRest) {
                             keys.push("b/4");
                         } else {
+                            const instrument = sheet.getInstrumentForStaff(s + 1);
+                            const transpose = sheet.Transpose + (instrument ? instrument.Transpose : 0);
+
+
+
                             for (const n of mainNotes) {
-                                const stepName = NoteEnum[n.pitch.step].toLowerCase();
-                                keys.push(`${stepName}/${n.pitch.octave}`);
+                                let pitch = n.pitch;
+                                if (transpose !== 0) {
+                                    pitch = Pitch.transpose(n.pitch, transpose);
+                                }
+                                const stepName = NoteEnum[pitch.step].toLowerCase();
+                                keys.push(`${stepName}/${pitch.octave}`);
                             }
+
                         }
 
                         // Map XML type to VexFlow duration
@@ -209,7 +219,7 @@ export class VexFlowMusicSheetCalculator {
                         if (mainNote.stemDirectionXml) {
                             if (mainNote.stemDirectionXml === "up") vfNote.setStemDirection(VF.Stem.UP);
                             else if (mainNote.stemDirectionXml === "down") vfNote.setStemDirection(VF.Stem.DOWN);
-                            console.log(`[Calculator] Applied Stem ${mainNote.stemDirectionXml} to ${keys.join(',')}`);
+                            // console.log(`[Calculator] Applied Stem ${mainNote.stemDirectionXml} to ${keys.join(',')}`);
                         } else {
                             // console.log(`[Calculator] No Stem XML for ${keys.join(',')}`);
                         }
