@@ -112,10 +112,10 @@ export class OpenSheetMusicDisplay {
 
         // format now returns noteMap as well
         // Use a smaller margin (e.g. 20) to avoid excessive whitespace
-        const { systems, curves, noteMap } = VexFlowMusicSheetCalculator.format(this.graphicalSheet, effectiveWidth - 20);
+        const { systems, curves, noteMap, metadata } = VexFlowMusicSheetCalculator.format(this.graphicalSheet, this.sheet, effectiveWidth - 20);
 
         // Draw returns measureBounds now
-        const measureBounds = this.drawer.draw({ systems, curves }, { darkMode: this.isDarkMode, zoom: this.zoom });
+        const measureBounds = this.drawer.draw({ systems, curves, metadata }, { darkMode: this.isDarkMode, zoom: this.zoom });
 
         // Initialize Cursor with Sheet logic, Graphic map, and Layout bounds
         // Note: Cursor needs new noteMap and bounds

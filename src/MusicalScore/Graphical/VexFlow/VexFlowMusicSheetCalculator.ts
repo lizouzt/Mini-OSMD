@@ -31,13 +31,10 @@ export class VexFlowMusicSheetCalculator {
         }
     }
 
-    public static format(graphicalSheet: GraphicalMusicSheet, containerWidth: number = 1000): { systems: any[][], curves: any[], noteMap: Map<any, any> } {
+    public static format(graphicalSheet: GraphicalMusicSheet, sheet: MusicSheet, containerWidth: number = 1000): { systems: any[][], curves: any[], noteMap: Map<any, any>, metadata: { title: string | undefined, composer: string | undefined } } {
         const systems: any[][] = [];
         let currentSystem: any[] = [];
         let currentSystemWidth = 0;
-        const sheet = graphicalSheet.musicSheet;
-
-        // Map logical Note to VexFlow StaveNote for linking expressions (Slurs)
         const noteMap = new Map<any, any>();
 
         // Track current state across measures for EACH staff
@@ -59,6 +56,9 @@ export class VexFlowMusicSheetCalculator {
             currentStaffIdx += inst.numStaves;
         });
 
+        const preparedMeasures: any[] = [];
+
+        // --- PASS 1: Build VexFlow Objects & Calculate Min Widths ---
         for (const measure of sheet.sourceMeasures) {
             // Volta Logic
             let voltaType = VF.Volta.type.NONE;
@@ -172,8 +172,6 @@ export class VexFlowMusicSheetCalculator {
                             const instrument = sheet.getInstrumentForStaff(s + 1);
                             const transpose = sheet.Transpose + (instrument ? instrument.Transpose : 0);
 
-
-
                             for (const n of mainNotes) {
                                 let pitch = n.pitch;
                                 if (transpose !== 0) {
@@ -219,27 +217,10 @@ export class VexFlowMusicSheetCalculator {
                         if (mainNote.stemDirectionXml) {
                             if (mainNote.stemDirectionXml === "up") vfNote.setStemDirection(VF.Stem.UP);
                             else if (mainNote.stemDirectionXml === "down") vfNote.setStemDirection(VF.Stem.DOWN);
-                            // console.log(`[Calculator] Applied Stem ${mainNote.stemDirectionXml} to ${keys.join(',')}`);
-                        } else {
-                            // console.log(`[Calculator] No Stem XML for ${keys.join(',')}`);
-                        }
-
-                        if (keys.some(k => k.includes('b/') || k.includes('d/'))) {
-                            console.log(`[Calculator] Created Note: Keys=${keys.join(',')} StemXML=${mainNote.stemDirectionXml}`);
                         }
 
                         // Fix Ticks for Tuplets/unusual durations
                         try {
-                            // Calculate total ticks for the note based on MusicXML duration
-                            // VF.RESOLUTION is usually 16384 (4 beats) or 4096 (1 beat)?
-                            // In VF5, RESOLUTION is often 16384. Quarter = RESOLUTION / 4.
-                            // Let's use standard mapped ratio.
-                            // note.length = 1/4 -> Quarter.
-                            // ticks = (1/4) * 4 * RESOLUTION = RESOLUTION.
-                            // Wait, if RESOLUTION is 16384 (Whole Note reference in some versions), then ok.
-                            // But usually VF.RESOLUTION is used as "Resolution per beat" or "per quarter"?
-                            // Standard: Quarter = 16384? No.
-                            // Using VexFlow standard resolution (16384 per whole note)
                             const resolution = 16384;
                             const num = mainNote.length.numerator * resolution;
                             const den = mainNote.length.denominator;
@@ -249,7 +230,6 @@ export class VexFlowMusicSheetCalculator {
                             if (typeof (vfNote as any).setTicks === "function") {
                                 (vfNote as any).setTicks(tickFrac);
                             } else {
-                                // Fallback to property assignment
                                 (vfNote as any).ticks = tickFrac;
                             }
                         } catch (e) {
@@ -261,7 +241,6 @@ export class VexFlowMusicSheetCalculator {
 
                         // Add Accidentals
                         mainNotes.forEach((n, index) => {
-                            // Priority: Explicit XML Accidental -> Pitch Alter
                             let acc = "";
                             if (n.accidentalXml) {
                                 switch (n.accidentalXml) {
@@ -270,7 +249,7 @@ export class VexFlowMusicSheetCalculator {
                                     case "flat": acc = "b"; break;
                                     case "double-sharp": acc = "##"; break;
                                     case "flat-flat": acc = "bb"; break;
-                                    case "quarter-flat": acc = "d"; break; // VexFlow Microtonal support varies
+                                    case "quarter-flat": acc = "d"; break;
                                     case "quarter-sharp": acc = "+"; break;
                                     default: break;
                                 }
@@ -286,8 +265,7 @@ export class VexFlowMusicSheetCalculator {
                             // Add Articulations
                             n.articulations.forEach(art => {
                                 let vfArt = "";
-                                let pos = VF.Modifier.Position.ABOVE; // Default
-                                if (art === "staccato") { vfArt = "a."; pos = VF.Modifier.Position.BELOW; } // Staccato often below/above opposite to stem
+                                if (art === "staccato") vfArt = "a.";
                                 else if (art === "accent") vfArt = "a>";
                                 else if (art === "marcato") vfArt = "a^";
                                 else if (art === "tenuto") vfArt = "a-";
@@ -295,8 +273,6 @@ export class VexFlowMusicSheetCalculator {
 
                                 if (vfArt) {
                                     const modifier = new VF.Articulation(vfArt);
-                                    // Let VexFlow handle position automatically or hint it?
-                                    // For simplicity, let VF handle it, but sometimes hints help.
                                     vfNote.addModifier(modifier, index);
                                 }
                             });
@@ -371,7 +347,6 @@ export class VexFlowMusicSheetCalculator {
                 }
 
                 // Tuplets for this staff
-                // Generate Tuplets (checking notes belonging to this staff)
                 const processedTuplets = new Set<Tuplet>();
                 for (const note of measure.notes) {
                     if (note.staffId - 1 === s && note.tuplet && !processedTuplets.has(note.tuplet)) {
@@ -410,6 +385,8 @@ export class VexFlowMusicSheetCalculator {
             }
 
             // Iterate all staves to find max required width
+            const allMeasureVoices: VF.Voice[] = [];
+
             for (let s = 0; s <= maxStaffIndex; s++) {
                 const tempVoices: any[] = [];
 
@@ -440,17 +417,10 @@ export class VexFlowMusicSheetCalculator {
 
                     if (measureMaxTicks > 0 && currentTicks < measureMaxTicks) {
                         const diff = measureMaxTicks - currentTicks;
-                        // console.log(`Padding Voice ${vid} in Staff ${s}: ${currentTicks} -> ${measureMaxTicks} (+${diff})`);
-                        // Create GhostNote for padding
                         const ghost = new VF.GhostNote({ duration: "b" });
-                        // ghost.setTicks(new VF.Fraction(diff, 1)); // VexFlow 4/5 way?
-                        // If setTicks not available or simple, try property access or constructor if possible.
-                        // Standard VF check: Note uses setTicks(Fraction).
-                        // However, to avoid 'setTicks not function' error if types differ, cast to any.
                         if ((ghost as any).setTicks) {
                             (ghost as any).setTicks(new VF.Fraction(diff, 1));
                         } else {
-                            // Fallback for some versions: manually set ticks
                             (ghost as any).ticks = new VF.Fraction(diff, 1);
                         }
                         staffVoices[s][vid].push(ghost);
@@ -463,19 +433,33 @@ export class VexFlowMusicSheetCalculator {
                 }
 
                 if (tempVoices.length > 0) {
-                    try {
-                        const formatter = new VF.Formatter();
-                        const w = formatter.joinVoices(tempVoices).preCalculateMinTotalWidth(tempVoices);
+                    allMeasureVoices.push(...tempVoices);
+                }
+            }
 
-                        // Increased padding and added spacing multiplier for wider layout (Match OSMD)
-                        let padding = 40; // Base padding increased from 20 to 40
-                        if (measure.clefs[s] || measure.measureNumber === 1) padding += 50;
-                        if (measure.rhythms[s] || measure.measureNumber === 1) padding += 40;
-                        if (measure.keys[s]) padding += 30;
+            if (allMeasureVoices.length > 0) {
+                try {
+                    const formatter = new VF.Formatter();
+                    // Join ALL voices to calculate correctly aligned width
+                    const w = formatter.joinVoices(allMeasureVoices).preCalculateMinTotalWidth(allMeasureVoices);
 
-                        // Apply 1.3x multiplier to voice content width for "breathed" layout
-                        minWidth = Math.max(minWidth, (w * 1.3) + padding);
-                    } catch (e) { }
+                    let padding = 40;
+                    // Add padding for the "heaviest" staff attributes (approximation)
+                    // We check all staves for attributes to ensure enough space
+                    let maxPaddingAdd = 0;
+                    for (let s = 0; s <= maxStaffIndex; s++) {
+                        let p = 0;
+                        if (measure.clefs[s] || measure.measureNumber === 1) p += 50;
+                        if (measure.rhythms[s] || measure.measureNumber === 1) p += 40;
+                        if (measure.keys[s]) p += 30;
+                        if (p > maxPaddingAdd) maxPaddingAdd = p;
+                    }
+                    padding += maxPaddingAdd;
+
+                    // Reduce Multiplier to avoid excessive width
+                    minWidth = Math.max(minWidth, (w * 1.2) + padding);
+                } catch (e) {
+                    console.warn("Formatting error:", e);
                 }
             }
 
@@ -491,9 +475,6 @@ export class VexFlowMusicSheetCalculator {
                         const isGhost = (n instanceof VF.GhostNote) || (n.getCategory && n.getCategory() === 'ghostnote');
                         return !isGhost;
                     });
-                    if (staffVoices[s][vid].length !== beamNotes.length) {
-                        console.warn(`[Beaming] Filtered GhostNotes. Staff ${s} Voice ${vid}: ${staffVoices[s][vid].length} -> ${beamNotes.length}`);
-                    }
                     const beams = VF.Beam.generateBeams(beamNotes);
                     allBeams.push(...beams);
                 }
@@ -508,8 +489,6 @@ export class VexFlowMusicSheetCalculator {
                     voltaType: s === 0 ? voltaType : VF.Volta.type.NONE,
                     voltaNumber: s === 0 ? measure.endingNumber : "",
                     label: measure.measureNumber === 1 ? staffInstrumentLabels[s] : undefined,
-                    activeKeySignature: currentKeyStrs[s],
-                    activeClef: currentClefStrs[s]
                 });
             }
 
@@ -526,47 +505,63 @@ export class VexFlowMusicSheetCalculator {
                 }
             }
 
-            const measureData = {
+            preparedMeasures.push({
                 measureNumber: measure.measureNumber,
                 measureIndex: sheet.sourceMeasures.indexOf(measure),
-                maxTicks: measureMaxTicks, // Pass global max ticks to Drawer
-                staves: stavesData, // New structure
-                width: minWidth,
-                endBarLineType: endBarLineType
-            };
+                maxTicks: measureMaxTicks,
+                staves: stavesData,
+                minWidth: minWidth,
+                endBarLineType: endBarLineType,
+                printNewSystem: measure.printNewSystem,
+                printNewPage: measure.printNewPage
+            });
+        }
 
-            // Justified Layout Logic
+        // --- PASS 2: System Building & Justification ---
+        for (const data of preparedMeasures) {
             // Check for Explicit System/Page Break
-            const forceBreak = (measure.printNewSystem || measure.printNewPage) && currentSystem.length > 0;
+            // Mini-OSMD: Ignore explicit XML breaks to ensure responsive layout on web
+            const forceBreak = false; // (data.printNewSystem || data.printNewPage) && currentSystem.length > 0;
 
             // Check for Width Overflow
-            const widthOverflow = currentSystemWidth + measureData.width > containerWidth && currentSystem.length > 0;
+            const widthOverflow = currentSystemWidth + data.minWidth > containerWidth && currentSystem.length > 0;
 
             if (forceBreak || widthOverflow) {
-                // System is full or forced break. Distribute extra space.
-                if (currentSystem.length > 0) {
-                    // For explicit breaks, we might NOT want to justify full width if it's the last system of a page?
-                    // But usually in OSMD/MusicXML, breaks imply filled systems unless it's the very end.
-                    // Let's justify.
-                    const extraSpace = containerWidth - currentSystemWidth;
-                    const extraPerMeasure = extraSpace / currentSystem.length;
-                    currentSystem.forEach(m => m.width += extraPerMeasure);
+                // Push current system
+                // Linear Justification
+                const totalMinWidth = currentSystemWidth;
+                const extraSpace = containerWidth - totalMinWidth;
 
-                    systems.push(currentSystem);
-                    currentSystem = [];
-                    currentSystemWidth = 0;
+                // But for now, simple justification
+                if (currentSystem.length > 0 && extraSpace > 0) {
+                    // Proportional Justification: Distribute extra space based on MinWidth
+                    // This prevents empty/simple measures from stretching too much
+                    currentSystem.forEach(m => {
+                        const ratio = m.minWidth / totalMinWidth;
+                        m.width = m.minWidth + (extraSpace * ratio);
+                    });
+                } else {
+                    currentSystem.forEach(m => m.width = m.minWidth);
                 }
+
+
+                systems.push(currentSystem);
+                currentSystem = [];
+                currentSystemWidth = 0;
             }
 
-            currentSystem.push(measureData);
-            currentSystemWidth += measureData.width;
+            currentSystem.push(data);
+            currentSystemWidth += data.minWidth;
         }
 
-        // Add last system
         if (currentSystem.length > 0) {
-            // No justification for the last system to prevent stretching artifacts
+            // Last system: Don't justify fully? 
+            // Normally last system is ragged right.
+            currentSystem.forEach(m => m.width = m.minWidth);
             systems.push(currentSystem);
         }
+
+
 
         // Build Maps for System tracking
         const vfNoteToSystem = new Map<any, number>();
@@ -729,6 +724,14 @@ export class VexFlowMusicSheetCalculator {
             }
         });
 
-        return { systems, curves, noteMap };
+        return {
+            systems,
+            curves,
+            noteMap,
+            metadata: {
+                title: sheet.Title,
+                composer: sheet.Composer
+            }
+        };
     }
 }

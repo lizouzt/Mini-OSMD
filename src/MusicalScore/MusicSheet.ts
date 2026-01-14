@@ -11,6 +11,8 @@ export class Instrument {
 }
 
 export class MusicSheet {
+    public Title: string | undefined;
+    public Composer: string | undefined;
     public Transpose: number = 0;
     public sourceMeasures: SourceMeasure[] = [];
     public slurs: Slur[] = [];

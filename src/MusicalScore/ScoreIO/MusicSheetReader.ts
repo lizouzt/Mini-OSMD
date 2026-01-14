@@ -20,6 +20,46 @@ export class MusicSheetReader {
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
         const sheet = new MusicSheet();
 
+        // Parse Metadata (Title, Composer)
+        const work = xmlDoc.getElementsByTagName("work")[0];
+        if (work) {
+            const workTitle = work.getElementsByTagName("work-title")[0]?.textContent;
+            if (workTitle) sheet.Title = workTitle;
+        }
+
+        const identification = xmlDoc.getElementsByTagName("identification")[0];
+        if (identification) {
+            const creators = identification.getElementsByTagName("creator");
+            for (let i = 0; i < creators.length; i++) {
+                const creator = creators[i];
+                if (creator.getAttribute("type") === "composer") {
+                    sheet.Composer = creator.textContent || "";
+                    break;
+                }
+            }
+        }
+
+        // Fallback: Credit tags (often used for Title/Composer in some exports)
+        if (!sheet.Title || !sheet.Composer) {
+            const credits = xmlDoc.getElementsByTagName("credit");
+            for (let i = 0; i < credits.length; i++) {
+                const credit = credits[i];
+                const type = credit.getElementsByTagName("credit-type")[0]?.textContent;
+                const words = credit.getElementsByTagName("credit-words")[0]?.textContent;
+
+                if (words) {
+                    if (!sheet.Title && (type === "title" || credit.getAttribute("page") === "1")) {
+                        // Heuristic: If it's at the top center, it might be a title
+                        // But explicit type is better
+                        if (type === "title") sheet.Title = words;
+                    }
+                    if (!sheet.Composer && type === "composer") {
+                        sheet.Composer = words;
+                    }
+                }
+            }
+        }
+
         const parts = xmlDoc.getElementsByTagName("part");
         let globalStaffOffset = 0;
 
