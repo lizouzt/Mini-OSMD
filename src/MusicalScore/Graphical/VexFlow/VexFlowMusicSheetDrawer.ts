@@ -15,13 +15,13 @@ export class VexFlowMusicSheetDrawer {
     private renderer: any;
     private ctx: any;
 
-    private drawTitleAndComposer(metadata: { title: string | undefined, composer: string | undefined }, startY: number): number {
+    private drawTitleAndComposer(metadata: { title: string | undefined, composer: string | undefined }, startY: number, color: string): number {
         let currentY = startY;
         const width = this.container.clientWidth || 1000; // Use container width
         const centerX = width / 2;
 
         this.ctx.save();
-        this.ctx.setFillStyle(this.ctx.state.fillStyle); // Preserve color logic
+        this.ctx.setFillStyle(color); // Explicitly set color
 
         if (metadata.title) {
             this.ctx.setFont("Times New Roman", 32, "bold");
@@ -81,7 +81,7 @@ export class VexFlowMusicSheetDrawer {
         let y = 50; // Initial Top Margin
 
         if (metadata) {
-            y = this.drawTitleAndComposer(metadata, y);
+            y = this.drawTitleAndComposer(metadata, y, color);
         }
 
         // Map<MeasureNumber, Bounds>
