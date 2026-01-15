@@ -52,8 +52,8 @@ export class VexFlowMusicSheetDrawer {
         this.ctx.clear();
     }
 
-    public draw(data: { systems: any[][], curves: any[], partGroups?: any[], metadata?: { title: string | undefined, composer: string | undefined } }, options: { darkMode?: boolean, zoom?: number } = {}): Map<number, { topY: number, botY: number }> {
-        const { systems, curves, partGroups, metadata } = data;
+    public draw(data: { systems: any[][], curves: any[], systemStaffCurves?: Map<number, Map<number, any[]>>, partGroups?: any[], metadata?: { title: string | undefined, composer: string | undefined } }, options: { darkMode?: boolean, zoom?: number } = {}): Map<number, { topY: number, botY: number }> {
+        const { systems, curves, systemStaffCurves, partGroups, metadata } = data;
         const { darkMode, zoom = 1.0 } = options;
 
         this.ctx.clear();
@@ -81,9 +81,12 @@ export class VexFlowMusicSheetDrawer {
         const measureBounds = new Map<number, { topY: number, botY: number }>();
 
         // Loop Systems
-        for (const system of systems) {
+        for (let sysIdx = 0; sysIdx < systems.length; sysIdx++) {
+            const system = systems[sysIdx];
+            const currentSysCurves = systemStaffCurves?.get(sysIdx);
+
             // 1. Calculate Vertical Layout for this System
-            const staffYOffsets = this.calculateSystemLayout(system);
+            const staffYOffsets = this.calculateSystemLayout(system, currentSysCurves);
 
             // 2. Determine System Height
             let maxSystemBottom = 0;
@@ -359,7 +362,7 @@ export class VexFlowMusicSheetDrawer {
     /**
      * Calculates the Y positions for each staff in a system to avoid collisions.
      */
-    private calculateSystemLayout(system: any[]): number[] {
+    private calculateSystemLayout(system: any[], systemCurves?: Map<number, any[]>): number[] {
         if (system.length === 0) return [];
         const numStaves = system[0].staves.length;
         const offsets = [0];
@@ -372,8 +375,11 @@ export class VexFlowMusicSheetDrawer {
                 const upperStaff = measure.staves[i];
                 const lowerStaff = measure.staves[i + 1];
 
-                const upperContours = this.computeStaffContours(upperStaff, measure.width, measure.maxTicks);
-                const lowerContours = this.computeStaffContours(lowerStaff, measure.width, measure.maxTicks);
+                const upperCurves = systemCurves?.get(i) || [];
+                const lowerCurves = systemCurves?.get(i + 1) || [];
+
+                const upperContours = this.computeStaffContours(upperStaff, measure.width, measure.maxTicks, upperCurves);
+                const lowerContours = this.computeStaffContours(lowerStaff, measure.width, measure.maxTicks, lowerCurves);
 
                 // Calculate Max Overlap across the width
                 // Note: contours are based on 10px resolution
@@ -394,7 +400,7 @@ export class VexFlowMusicSheetDrawer {
         return offsets;
     }
 
-    private computeStaffContours(staffData: any, width: number, maxTicks: number): { skyline: number[], bottomLine: number[] } {
+    private computeStaffContours(staffData: any, width: number, maxTicks: number, curves: any[] = []): { skyline: number[], bottomLine: number[] } {
         const resolution = 10;
         const numSamples = Math.ceil(width / resolution);
         // Default: Top/Bottom of Staff (approx 0 to 80 for 5 lines with 10 spacing)
@@ -491,6 +497,69 @@ export class VexFlowMusicSheetDrawer {
             // Update with a generic width (e.g. 20px)
             updateContour(noteX, minY, 20, maxY - minY);
         });
+
+        // 6. Include Slurs, Ties, Wedges (High-Level Curves)
+        const updateForCurve = (curve: any) => {
+            try {
+                let startNote: any, endNote: any;
+                const anyCurve = curve as any;
+
+                // Identify Start/End Notes from VexFlow Objects
+                if (anyCurve.from && anyCurve.to) { // VF.Curve
+                    startNote = anyCurve.from;
+                    endNote = anyCurve.to;
+                } else if (anyCurve.first_note && anyCurve.last_note) { // VF.StaveTie / VF.StaveHairpin
+                    startNote = anyCurve.first_note;
+                    endNote = anyCurve.last_note;
+                } else if (anyCurve.start && anyCurve.stop) { // VF.TextBracket (Octave Shift)
+                    startNote = anyCurve.start;
+                    endNote = anyCurve.stop;
+                }
+
+                if (startNote && endNote) {
+                    // Get X range (Absolute X from TickContext)
+                    const x1 = startNote.getAbsoluteX();
+                    const x2 = endNote.getAbsoluteX();
+
+                    if (isNaN(x1) || isNaN(x2)) return;
+
+                    // Determine Position & Height
+                    let isBelow = false;
+                    let height = 15; // Default Generic Margin
+
+                    if (curve instanceof VF.StaveHairpin) {
+                        isBelow = true; // Usually below
+                        height = 20;
+                    }
+                    else if (curve instanceof VF.TextBracket) {
+                        if ((curve as any).position === VF.TextBracket.Position.BOTTOM) isBelow = true;
+                        height = 20;
+                    }
+                    else if (curve instanceof VF.Curve) {
+                        if ((curve.render_options as any)?.invert === true) isBelow = true;
+                        height = 15;
+                    }
+                    else if (curve instanceof VF.StaveTie) {
+                        return; // Skip ties (minimal vertical impact)
+                    }
+
+                    const startIdx = Math.max(0, Math.floor(x1 / resolution));
+                    const endIdx = Math.min(numSamples - 1, Math.floor(x2 / resolution));
+
+                    for (let k = startIdx; k <= endIdx; k++) {
+                        if (isBelow) {
+                            bottomLine[k] += height;
+                        } else {
+                            skyline[k] -= height;
+                        }
+                    }
+                }
+            } catch (e) { }
+        };
+
+        if (curves && curves.length > 0) {
+            curves.forEach(updateForCurve);
+        }
 
         // 2. Beams 
         // Beams are separate elements, but typically attached to stems.

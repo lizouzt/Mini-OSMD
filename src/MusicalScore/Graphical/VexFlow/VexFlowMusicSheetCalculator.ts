@@ -670,6 +670,19 @@ export class VexFlowMusicSheetCalculator {
         const vfNoteToSystem = new Map<any, number>();
         const systemStaffFirstLast = new Map<number, Map<number, { first: any, last: any }>>();
 
+        // New: Track curves per system AND STAFF for layout
+        const systemStaffCurves: Map<number, Map<number, any[]>> = new Map();
+        const addToSystem = (sysIdx: number | undefined, curve: any, staffIndices: number[]) => {
+            if (sysIdx === undefined) return;
+            if (!systemStaffCurves.has(sysIdx)) systemStaffCurves.set(sysIdx, new Map());
+            const sysMap = systemStaffCurves.get(sysIdx)!;
+
+            staffIndices.forEach(sIdx => {
+                if (!sysMap.has(sIdx)) sysMap.set(sIdx, []);
+                sysMap.get(sIdx)?.push(curve);
+            });
+        };
+
         systems.forEach((system, sysIdx) => {
             if (!systemStaffFirstLast.has(sysIdx)) systemStaffFirstLast.set(sysIdx, new Map());
 
@@ -723,6 +736,7 @@ export class VexFlowMusicSheetCalculator {
                                 invert: slur.startNote.pitch.octave >= 5
                             });
                             curves.push(curve1);
+                            addToSystem(sysStart, curve1, [startStaffIdx]);
 
                             const curve2 = new VF.Curve(sysEndData.first, vfEnd, {
                                 thickness: 2,
@@ -731,6 +745,7 @@ export class VexFlowMusicSheetCalculator {
                                 invert: slur.endNote.pitch.octave >= 5
                             });
                             curves.push(curve2);
+                            addToSystem(sysEnd, curve2, [endStaffIdx]);
                         } else {
                             // Fallback if system boundary notes not found (should be rare)
                             console.warn("Cross-system slur missing boundary notes, skipping to avoid diagonal.");
@@ -744,6 +759,12 @@ export class VexFlowMusicSheetCalculator {
                             invert: slur.startNote.pitch.octave >= 5
                         });
                         curves.push(curve);
+
+                        // Add to both start and end staff indices if different (cross-staff)
+                        const s1 = slur.startNote.staffId - 1;
+                        const s2 = slur.endNote.staffId - 1;
+                        const indices = s1 === s2 ? [s1] : [s1, s2];
+                        addToSystem(sysStart, curve, indices);
                     }
                 }
             }
@@ -761,6 +782,12 @@ export class VexFlowMusicSheetCalculator {
                         lastIndexes: [0]
                     });
                     curves.push(staveTie);
+
+                    const sys = vfNoteToSystem.get(vfStart);
+                    const s1 = tie.startNote.staffId - 1;
+                    const s2 = tie.endNote.staffId - 1;
+                    // Ties usually same staff, but be safe
+                    addToSystem(sys, staveTie, [s1, s2]);
                 }
             }
         }
@@ -777,6 +804,11 @@ export class VexFlowMusicSheetCalculator {
                     );
                     hairpin.setPosition(VF.Modifier.Position.BELOW); // Hairpins are usually below
                     curves.push(hairpin);
+
+                    const sys = vfNoteToSystem.get(vfStart);
+                    const s1 = wedge.startNote.staffId - 1;
+                    const s2 = wedge.endNote.staffId - 1;
+                    addToSystem(sys, hairpin, [s1, s2]);
                 }
             }
         }
@@ -796,6 +828,10 @@ export class VexFlowMusicSheetCalculator {
                         position: position
                     });
                     curves.push(bracket);
+
+                    const sys = vfNoteToSystem.get(vfStart);
+                    const s1 = shift.startNote.staffId - 1;
+                    addToSystem(sys, bracket, [s1]);
                 }
             }
         }
@@ -835,7 +871,8 @@ export class VexFlowMusicSheetCalculator {
             metadata: {
                 title: sheet.Title,
                 composer: sheet.Composer
-            }
+            },
+            systemStaffCurves // Export Map
         };
     }
 }
