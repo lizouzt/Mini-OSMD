@@ -485,6 +485,14 @@ export class MusicSheetReader {
             // console.log(`[Reader] Note Stem parsed: ${stem} for pitch ${pitch.toString()}`);
         }
 
+        const beams = xmlNote.getElementsByTagName("beam");
+        for (let b = 0; b < beams.length; b++) {
+            const beamState = beams[b].textContent;
+            if (beamState) {
+                note.beams.push(beamState);
+            }
+        }
+
         if (pitch.step === 11 || pitch.step === 2) { // B or D
             console.log(`[Reader] Parsed Note: Step=${pitch.step} Alter=${pitch.alter} Oct=${pitch.octave} Stem=${stem}`);
         }

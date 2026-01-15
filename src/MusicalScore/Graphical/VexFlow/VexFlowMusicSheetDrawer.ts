@@ -234,14 +234,8 @@ export class VexFlowMusicSheetDrawer {
 
                         voices.forEach((v: any) => v.draw(this.ctx, stave));
 
-                        // Draw Beams and Tuplets
-                        if (staffData.beams) {
-                            staffData.beams.forEach((beam: any) => {
-                                if (beam.setStyle) beam.setStyle(style);
-                                // beam.render_options.beam_width = 2; // Optional
-                                try { beam.setContext(this.ctx).draw(); } catch (e) { }
-                            });
-                        }
+                        // Draw Tuplets (Beams moved to Global Measure Level)
+                        // if (staffData.beams) ... REMOVED
                         if (staffData.vfTuplets) {
                             staffData.vfTuplets.forEach((t: any) => {
                                 this.ctx.setFillStyle(color);
@@ -258,6 +252,19 @@ export class VexFlowMusicSheetDrawer {
                         maxSystemBottom = Math.max(maxSystemBottom, stave.getY() + 100);
                     }
                 });
+
+                // DRAW CROSS-STAFF BEAMS (Global for Measure)
+                // Draw after all staves/voices in measure are rendered so stems are ready.
+                if (measureData.beams) {
+                    measureData.beams.forEach((beam: any) => {
+                        if (beam.setStyle) beam.setStyle(style);
+                        this.ctx.setFillStyle(color);
+                        this.ctx.setStrokeStyle(color);
+                        try { beam.setContext(this.ctx).draw(); } catch (e) {
+                            console.warn("Beam draw error", e);
+                        }
+                    });
+                }
 
                 // Connectors (Left side of system)
                 if (x === startX) {

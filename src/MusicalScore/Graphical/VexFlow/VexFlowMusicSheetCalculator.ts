@@ -339,6 +339,7 @@ export class VexFlowMusicSheetCalculator {
                         else vfNote.setStemDirection(VF.Stem.DOWN);
 
                         staffVoices[s][vid].push(vfNote);
+                        (vfNote as any).sourceNotes = notes; // Attach for Beaming Logic
 
                         for (const n of notes) {
                             noteMap.set(n, vfNote);
@@ -465,26 +466,85 @@ export class VexFlowMusicSheetCalculator {
 
             // Build staves data
             const stavesData = [];
+            const measureBeams: any[] = [];
+
+            // GLOBAL BEAMING (Cross-Staff)
+            const globalVoiceMap: { [vid: string]: any[] } = {};
+
             for (let s = 0; s <= maxStaffIndex; s++) {
-                // Beams
-                const allBeams: any[] = [];
                 for (const vid in staffVoices[s]) {
-                    // Filter out GhostNotes (Padding) from beaming to avoid "NoStem" crash
-                    const beamNotes = staffVoices[s][vid].filter((n: any) => {
-                        // Check instance OR category (safer)
+                    if (!globalVoiceMap[vid]) globalVoiceMap[vid] = [];
+                    // Filter ghosts
+                    const realNotes = staffVoices[s][vid].filter((n: any) => {
                         const isGhost = (n instanceof VF.GhostNote) || (n.getCategory && n.getCategory() === 'ghostnote');
                         return !isGhost;
                     });
-                    const beams = VF.Beam.generateBeams(beamNotes);
-                    allBeams.push(...beams);
+                    globalVoiceMap[vid].push(...realNotes);
+                }
+            }
+
+            // Generate Beams per Global Voice
+            for (const vid in globalVoiceMap) {
+                const notes = globalVoiceMap[vid];
+                // Sort notes by timestamp (ticks)
+                notes.sort((a: any, b: any) => {
+                    const tA = (a.sourceNotes && a.sourceNotes[0]) ? a.sourceNotes[0].timestamp.RealValue : 0;
+                    const tB = (b.sourceNotes && b.sourceNotes[0]) ? b.sourceNotes[0].timestamp.RealValue : 0;
+                    return tA - tB;
+                });
+
+                // Check for XML Beams
+                let hasXmlBeams = false;
+                let currentBeamGroup: any[] = [];
+
+                for (const note of notes) {
+                    const source = (note as any).sourceNotes ? (note as any).sourceNotes[0] : null;
+                    if (source && source.beams && source.beams.length > 0) {
+                        hasXmlBeams = true;
+                        const beamType = source.beams[0]; // Primary beam
+                        if (beamType === "begin") {
+                            if (currentBeamGroup.length > 0) {
+                                if (currentBeamGroup.length > 1) measureBeams.push(new VF.Beam(currentBeamGroup));
+                                currentBeamGroup = [];
+                            }
+                            currentBeamGroup.push(note);
+                        } else if (beamType === "continue") {
+                            currentBeamGroup.push(note);
+                        } else if (beamType === "end") {
+                            currentBeamGroup.push(note);
+                            if (currentBeamGroup.length > 1) measureBeams.push(new VF.Beam(currentBeamGroup));
+                            currentBeamGroup = [];
+                        } else if (beamType === "forward-hook" || beamType === "backward-hook") {
+                            currentBeamGroup.push(note);
+                        }
+                    } else {
+                        // Break beam group if finding note without beam
+                        if (currentBeamGroup.length > 0) {
+                            if (currentBeamGroup.length > 1) measureBeams.push(new VF.Beam(currentBeamGroup));
+                            currentBeamGroup = [];
+                        }
+                    }
+                }
+                if (currentBeamGroup.length > 1) {
+                    measureBeams.push(new VF.Beam(currentBeamGroup));
                 }
 
+                // Fallback: Auto Beam
+                if (!hasXmlBeams && notes.length > 1) {
+                    try {
+                        const beams = VF.Beam.generateBeams(notes);
+                        measureBeams.push(...beams);
+                    } catch (e) { }
+                }
+            }
+
+            for (let s = 0; s <= maxStaffIndex; s++) {
                 stavesData.push({
                     vfVoices: staffVoices[s],
-                    beams: allBeams,
+                    beams: [], // Global Beams are now separate
                     vfTuplets: staffTuplets[s],
                     clef: measure.clefs[s] ? currentClefStrs[s] : undefined,
-                    keySignature: measure.keys[s] || measure.measureNumber === 1 ? currentKeyStrs[s] : undefined, // Draw if explicit or start
+                    keySignature: measure.keys[s] || measure.measureNumber === 1 ? currentKeyStrs[s] : undefined,
                     timeSignature: measure.rhythms[s] ? currentTimeStrs[s] : undefined,
                     voltaType: s === 0 ? voltaType : VF.Volta.type.NONE,
                     voltaNumber: s === 0 ? measure.endingNumber : "",
@@ -510,6 +570,7 @@ export class VexFlowMusicSheetCalculator {
                 measureIndex: sheet.sourceMeasures.indexOf(measure),
                 maxTicks: measureMaxTicks,
                 staves: stavesData,
+                beams: measureBeams,
                 minWidth: minWidth,
                 endBarLineType: endBarLineType,
                 printNewSystem: measure.printNewSystem,
