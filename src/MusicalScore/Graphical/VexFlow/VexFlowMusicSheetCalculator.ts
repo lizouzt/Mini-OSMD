@@ -287,7 +287,7 @@ export class VexFlowMusicSheetCalculator {
                                 });
                             }
 
-                            // Add Words (Directions)
+                            // Add Word (Directions)
                             if (n.words && n.words.length > 0) {
                                 n.words.forEach(w => {
                                     const annotation = new VF.Annotation(w)
@@ -295,6 +295,48 @@ export class VexFlowMusicSheetCalculator {
                                         .setVerticalJustification(VF.Annotation.VerticalJustify.TOP);
                                     vfNote.addModifier(annotation, index);
                                 });
+                            }
+
+                            // Add Chord Symbols (Phase 4)
+                            // Only add to the first staff (s === 0) and only if timestamp matches
+                            if (s === 0 && measure.chordSymbols && measure.chordSymbols.length > 0) {
+                                const noteTimestamp = n.timestamp ? n.timestamp.RealValue : -1;
+                                if (noteTimestamp >= 0) {
+                                    const chords = measure.chordSymbols.filter((c: any) => Math.abs(c.timestamp.RealValue - noteTimestamp) < 0.001);
+                                    chords.forEach((c: any) => {
+                                        // Construct Chord String (Simplified)
+                                        // Root
+                                        let text = NoteEnum[c.root.step].replace("None", "");
+                                        // Alter
+                                        if (c.root.alter === 1) text += "#";
+                                        else if (c.root.alter === -1) text += "b";
+
+                                        // Kind
+                                        if (c.kind) {
+                                            if (c.kind === "major") text += "M";
+                                            else if (c.kind === "minor") text += "m";
+                                            else if (c.kind === "seventh") text += "7";
+                                            else if (c.kind === "major-seventh") text += "M7";
+                                            else if (c.kind === "minor-seventh") text += "m7";
+                                            else if (c.kind === "dominant") text += "7";
+                                            else text += c.kind; // Fallback
+                                        }
+
+                                        // Bass
+                                        if (c.bass) {
+                                            text += "/" + NoteEnum[c.bass.step];
+                                            if (c.bass.alter === 1) text += "#";
+                                            else if (c.bass.alter === -1) text += "b";
+                                        }
+
+                                        // Use VF.Annotation for stability
+                                        // VF.ChordSymbol is complex to setup without VexFlow patch
+                                        const cs = new VF.Annotation(text)
+                                            .setFont("Arial", 12, "bold") // Jazz-like font
+                                            .setVerticalJustification(VF.Annotation.VerticalJustify.TOP);
+                                        vfNote.addModifier(cs, index);
+                                    });
+                                }
                             }
                         });
 

@@ -30,6 +30,8 @@ export class SourceMeasure {
     public clefs: ClefInstruction[] = [];
     public keys: KeyInstruction[] = [];
     public rhythms: RhythmInstruction[] = [];
+    public chordSymbols: any[] = []; // ChordSymbolContainer[]
+
 
     public endBarType: BarLineType = BarLineType.Single;
 

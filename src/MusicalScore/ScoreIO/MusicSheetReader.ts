@@ -11,6 +11,8 @@ import { Tuplet } from "../VoiceData/Tuplet";
 import { Tie } from "../VoiceData/Tie";
 import { Wedge, WedgeType } from "../VoiceData/Wedge";
 import { OctaveShift, OctaveShiftType } from "../VoiceData/OctaveShift";
+import { ChordSymbolContainer } from "../VoiceData/ChordSymbolContainer";
+
 
 export class MusicSheetReader {
     public static transpose: number = 0;
@@ -291,7 +293,33 @@ export class MusicSheetReader {
 
                 for (let j = 0; j < children.length; j++) {
                     const child = children[j];
-                    if (child.tagName === "direction") {
+                    if (child.tagName === "harmony") {
+                        const rootStepStr = child.getElementsByTagName("root-step")[0]?.textContent;
+                        const rootAlterStr = child.getElementsByTagName("root-alter")[0]?.textContent;
+                        const kindStr = child.getElementsByTagName("kind")[0]?.getAttribute("text") || child.getElementsByTagName("kind")[0]?.textContent;
+                        const bassStepStr = child.getElementsByTagName("bass-step")[0]?.textContent;
+                        const bassAlterStr = child.getElementsByTagName("bass-alter")[0]?.textContent;
+
+                        if (rootStepStr) {
+                            const rootStep = (NoteEnum as any)[rootStepStr.toUpperCase()];
+                            if (rootStep !== undefined) {
+                                const rootAlter = rootAlterStr ? parseInt(rootAlterStr) : 0;
+                                const root = new Pitch(rootStep, 4, rootAlter); // Default oct 4
+
+                                let bass: Pitch | undefined = undefined;
+                                if (bassStepStr) {
+                                    const bassStep = (NoteEnum as any)[bassStepStr.toUpperCase()];
+                                    if (bassStep !== undefined) {
+                                        const bassAlter = bassAlterStr ? parseInt(bassAlterStr) : 0;
+                                        bass = new Pitch(bassStep, 3, bassAlter); // Default oct 3 for bass
+                                    }
+                                }
+
+                                const chord = new ChordSymbolContainer(root, kindStr || "", bass, [], cursor.clone());
+                                measure.chordSymbols.push(chord);
+                            }
+                        }
+                    } else if (child.tagName === "direction") {
                         const type = child.getElementsByTagName("direction-type")[0];
                         if (type) {
                             // Dynamics
