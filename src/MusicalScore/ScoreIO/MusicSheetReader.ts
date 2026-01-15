@@ -1,4 +1,4 @@
-import { MusicSheet, Instrument } from "../MusicSheet";
+import { MusicSheet, Instrument, PartGroup } from "../MusicSheet";
 import { SourceMeasure, BarLineType, EndingType } from "../VoiceData/SourceMeasure";
 import { Note } from "../VoiceData/Note";
 import { Pitch, NoteEnum } from "../VoiceData/Pitch";
@@ -55,6 +55,71 @@ export class MusicSheetReader {
                     }
                     if (!sheet.Composer && type === "composer") {
                         sheet.Composer = words;
+                    }
+                }
+            }
+        }
+
+
+        // Helper to get staves count for a part by scanning its attributes
+        const getPartStaves = (part: Element): number => {
+            const measures = part.getElementsByTagName("measure");
+            if (measures.length > 0) {
+                const attr = measures[0].getElementsByTagName("attributes")[0];
+                if (attr) {
+                    const stavesNode = attr.getElementsByTagName("staves")[0];
+                    if (stavesNode) return parseInt(stavesNode.textContent || "1");
+                }
+            }
+            return 1;
+        };
+
+        // Parse part-list for Groups
+        const partList = xmlDoc.getElementsByTagName("part-list")[0];
+        if (partList) {
+            let currentStaffIndex = 0;
+            // Iterate children in order: part-group or score-part
+            // We need to match score-part to actua <part> elements in body to determine staff count
+            // This is complex because MusicXML separation.
+
+            // Simplified approach: Iterate all children of part-list
+            // Maintain a stack for open groups
+            const groupStack: { number: string, startStaff: number, symbol: string }[] = [];
+
+            // We need a map of partId -> staffCount to calculate staff indices
+            const partStaffCounts: { [partId: string]: number } = {};
+            const parts = xmlDoc.getElementsByTagName("part");
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                const partId = part.getAttribute("id") || `P${i + 1}`;
+                partStaffCounts[partId] = getPartStaves(part);
+            }
+
+            // Iterate part-list children
+            for (let i = 0; i < partList.childNodes.length; i++) {
+                const node = partList.childNodes[i] as Element;
+                if (node.nodeName === "part-group") {
+                    const type = node.getAttribute("type");
+                    const number = node.getAttribute("number") || "1";
+
+                    if (type === "start") {
+                        const symbol = node.getElementsByTagName("group-symbol")[0]?.textContent || "brace";
+                        groupStack.push({ number, startStaff: currentStaffIndex + 1, symbol });
+                    } else if (type === "stop") {
+                        const groupIdx = groupStack.findIndex(g => g.number === number);
+                        if (groupIdx >= 0) {
+                            const group = groupStack[groupIdx];
+                            // End staff is currentStaffIndex (which points to the last processed part's end)
+                            sheet.partGroups.push(new PartGroup(group.startStaff, currentStaffIndex, group.symbol));
+                            groupStack.splice(groupIdx, 1);
+                        }
+                    }
+                } else if (node.nodeName === "score-part") {
+                    const partId = node.getAttribute("id");
+                    if (partId && partStaffCounts[partId]) {
+                        currentStaffIndex += partStaffCounts[partId];
+                    } else {
+                        currentStaffIndex += 1; // Fallback
                     }
                 }
             }

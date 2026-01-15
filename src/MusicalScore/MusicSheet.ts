@@ -10,6 +10,14 @@ export class Instrument {
     constructor(public id: string, public name: string, public numStaves: number = 1) { }
 }
 
+export class PartGroup {
+    constructor(
+        public startStaffId: number,
+        public endStaffId: number,
+        public groupSymbol: string // "brace", "line", "bracket", "square"
+    ) { }
+}
+
 export class MusicSheet {
     public Title: string | undefined;
     public Composer: string | undefined;
@@ -20,6 +28,7 @@ export class MusicSheet {
     public wedges: Wedge[] = [];
     public octaveShifts: OctaveShift[] = [];
     public instruments: Instrument[] = [];
+    public partGroups: PartGroup[] = [];
 
     public addMeasure(measure: SourceMeasure): void {
         this.sourceMeasures.push(measure);

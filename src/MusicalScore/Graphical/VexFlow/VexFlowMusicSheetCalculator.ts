@@ -31,7 +31,7 @@ export class VexFlowMusicSheetCalculator {
         }
     }
 
-    public static format(graphicalSheet: GraphicalMusicSheet, sheet: MusicSheet, containerWidth: number = 1000): { systems: any[][], curves: any[], noteMap: Map<any, any>, metadata: { title: string | undefined, composer: string | undefined } } {
+    public static format(graphicalSheet: GraphicalMusicSheet, sheet: MusicSheet, containerWidth: number = 1000): { systems: any[][], curves: any[], noteMap: Map<any, any>, partGroups: any[], metadata: { title: string | undefined, composer: string | undefined } } {
         const systems: any[][] = [];
         let currentSystem: any[] = [];
         let currentSystemWidth = 0;
@@ -728,6 +728,7 @@ export class VexFlowMusicSheetCalculator {
             systems,
             curves,
             noteMap,
+            partGroups: sheet.partGroups,
             metadata: {
                 title: sheet.Title,
                 composer: sheet.Composer

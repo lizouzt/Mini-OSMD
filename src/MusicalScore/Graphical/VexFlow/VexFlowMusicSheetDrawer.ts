@@ -52,8 +52,8 @@ export class VexFlowMusicSheetDrawer {
         this.ctx.clear();
     }
 
-    public draw(data: { systems: any[][], curves: any[], metadata?: { title: string | undefined, composer: string | undefined } }, options: { darkMode?: boolean, zoom?: number } = {}): Map<number, { topY: number, botY: number }> {
-        const { systems, curves, metadata } = data;
+    public draw(data: { systems: any[][], curves: any[], partGroups?: any[], metadata?: { title: string | undefined, composer: string | undefined } }, options: { darkMode?: boolean, zoom?: number } = {}): Map<number, { topY: number, botY: number }> {
+        const { systems, curves, partGroups, metadata } = data;
         const { darkMode, zoom = 1.0 } = options;
 
         this.ctx.clear();
@@ -260,16 +260,41 @@ export class VexFlowMusicSheetDrawer {
                 });
 
                 // Connectors (Left side of system)
-                if (vfStaves.length > 1 && x === startX) {
-                    this.ctx.setStrokeStyle(color);
-                    this.ctx.setFillStyle(color);
-                    const connector = new VF.StaveConnector(vfStaves[0], vfStaves[vfStaves.length - 1]);
-                    connector.setType(VF.StaveConnector.type.BRACE);
-                    connector.setContext(this.ctx).draw();
+                if (x === startX) {
+                    // Check for Part Groups and Draw Connectors
+                    if (partGroups) {
+                        partGroups.forEach(group => {
+                            const startIdx = group.startStaffId - 1;
+                            const endIdx = group.endStaffId - 1;
 
-                    const lineConnector = new VF.StaveConnector(vfStaves[0], vfStaves[vfStaves.length - 1]);
-                    lineConnector.setType(VF.StaveConnector.type.SINGLE_LEFT);
-                    lineConnector.setContext(this.ctx).draw();
+                            // Check bounds
+                            if (startIdx >= 0 && endIdx < vfStaves.length && startIdx <= endIdx) {
+                                const topStave = vfStaves[startIdx];
+                                const bottomStave = vfStaves[endIdx];
+
+                                let type = VF.StaveConnector.type.BRACE;
+                                if (group.groupSymbol === "bracket") type = VF.StaveConnector.type.BRACKET;
+                                else if (group.groupSymbol === "brace") type = VF.StaveConnector.type.BRACE;
+                                else if (group.groupSymbol === "line") type = VF.StaveConnector.type.SINGLE_LEFT;
+                                else if (group.groupSymbol === "square") type = VF.StaveConnector.type.SINGLE_LEFT;
+
+                                const connector = new VF.StaveConnector(topStave, bottomStave);
+                                connector.setType(type);
+                                this.ctx.setFillStyle(color);
+                                this.ctx.setStrokeStyle(color);
+                                connector.setContext(this.ctx).draw();
+                            }
+                        });
+                    }
+
+                    // Always draw SingleLine connecting all staves of the system (standard)
+                    if (vfStaves.length > 1) {
+                        const lineConnector = new VF.StaveConnector(vfStaves[0], vfStaves[vfStaves.length - 1]);
+                        lineConnector.setType(VF.StaveConnector.type.SINGLE_LEFT);
+                        this.ctx.setFillStyle(color);
+                        this.ctx.setStrokeStyle(color);
+                        lineConnector.setContext(this.ctx).draw();
+                    }
                 }
 
                 // Closing System Connector (Right side of system)
