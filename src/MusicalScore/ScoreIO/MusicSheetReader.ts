@@ -20,6 +20,7 @@ export class MusicSheetReader {
     public static readMusicXML(xmlString: string): MusicSheet {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+
         const sheet = new MusicSheet();
 
         // Parse Metadata (Title, Composer)

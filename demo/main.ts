@@ -10,7 +10,7 @@ import dichterliebeUrl from '/demo/Dichterliebe01.xml?url';
 // @ts-ignore
 import parlezUrl from '/demo/Parlez-moi.mxl?url';
 // @ts-ignore
-import saltarelloUrl from '/demo/Saltarello.mxl?url';
+import saltarelloUrl from '/demo/Saltarello.musicxml?url';
 // @ts-ignore
 import multirestUrl from '/demo/Test_Auto_Multirest_2.musicxml?url';
 // @ts-ignore
@@ -113,6 +113,7 @@ if (container && selectElement) {
         { name: "Saltarello", value: "saltarello", url: saltarelloUrl },
         { name: "Test Auto Multirest", value: "multirest", url: multirestUrl },
         { name: "Test Slurs High Notes", value: "slurs", url: slursUrl },
+        { name: "Chord Symbols Test", value: "chords", url: "/demo/chords_test.musicxml?url" },
         { name: "OSMD Function Test All", value: "function_test", url: functionTestUrl }
     ];
 

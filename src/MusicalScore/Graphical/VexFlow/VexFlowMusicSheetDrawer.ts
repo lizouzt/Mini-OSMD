@@ -57,13 +57,6 @@ export class VexFlowMusicSheetDrawer {
         const { darkMode, zoom = 1.0 } = options;
 
         this.ctx.clear();
-        // Reset scale? VexFlow SVGContext doesn't have resetTransform easily.
-        // But since we clear container in constructor, we should be creating a NEW Drawer on every render ideally.
-        // If we reuse drawer, we risk accumulating state.
-        // Assuming we reuse drawer:
-        // Try to overwrite scale. 
-        // VexFlow setScale usually sets a transform on the main group.
-        // this.ctx.scale(zoom, zoom); // REMOVED: ViewBox scaling handles zoom. Double scaling caused whitespace.
 
         // Native Dark Mode Styling
         const color = darkMode ? "#FFFFFF" : "#000000";
