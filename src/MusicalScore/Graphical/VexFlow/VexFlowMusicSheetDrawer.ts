@@ -479,7 +479,15 @@ export class VexFlowMusicSheetDrawer {
             }
 
             // Modifiers (Lyrics, Dynamics, Annotations)
+            // Modifiers (Lyrics, Dynamics, Annotations)
             note.modifiers.forEach((m: any) => {
+                let modWidth = 20; // Default
+                if (m.getWidth) modWidth = m.getWidth();
+                else if (m.text) modWidth = m.text.length * 6; // Approx
+
+                // Centered on NoteX
+                const modX = noteX - (modWidth / 2);
+
                 if (m.category === "annotation" || m.category === "text") {
                     // Check Vertical Justification
                     // VF.Annotation.VerticalJustify: TOP=1, CENTER=2, BOTTOM=3, CENTER_STEM=4
@@ -489,12 +497,19 @@ export class VexFlowMusicSheetDrawer {
                         if (just === VF.Annotation.VerticalJustify.TOP) isBottom = false;
                     }
 
-                    if (isBottom) maxY += 25;
-                    else minY -= 25;
+                    if (isBottom) {
+                        // Update BottomLine for this modifier
+                        updateContour(modX, maxY, modWidth, 25);
+                        maxY += 25; // Stack? Simple approximation
+                    } else {
+                        // Update Skyline for this modifier
+                        updateContour(modX, minY - 25, modWidth, 25);
+                        minY -= 25;
+                    }
                 }
             });
 
-            // Update with a generic width (e.g. 20px)
+            // Update for Notehead/Stem
             updateContour(noteX, minY, 20, maxY - minY);
         });
 
@@ -514,6 +529,9 @@ export class VexFlowMusicSheetDrawer {
                 } else if (anyCurve.start && anyCurve.stop) { // VF.TextBracket (Octave Shift)
                     startNote = anyCurve.start;
                     endNote = anyCurve.stop;
+                } else if (anyCurve.notes && anyCurve.notes.length > 0) { // VF.Beam
+                    startNote = anyCurve.notes[0];
+                    endNote = anyCurve.notes[anyCurve.notes.length - 1];
                 }
 
                 if (startNote && endNote) {
@@ -541,6 +559,16 @@ export class VexFlowMusicSheetDrawer {
                     }
                     else if (curve instanceof VF.StaveTie) {
                         return; // Skip ties (minimal vertical impact)
+                    }
+                    else if (anyCurve.notes) { // VF.Beam
+                        // Estimate position based on stem direction of notes?
+                        // Or just look at the notes Y?
+                        // Simple heuristic: If stems UP, beam is Above. If stems DOWN, beam is Below.
+                        // Check first note's stem.
+                        try {
+                            if (startNote.getStemDirection() === VF.Stem.DOWN) isBelow = true;
+                        } catch (e) { }
+                        height = 15; // Beam thickness + stem margin
                     }
 
                     const startIdx = Math.max(0, Math.floor(x1 / resolution));

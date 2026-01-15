@@ -668,6 +668,7 @@ export class VexFlowMusicSheetCalculator {
 
         // Build Maps for System tracking
         const vfNoteToSystem = new Map<any, number>();
+        const vfNoteToStaff = new Map<any, number>();
         const systemStaffFirstLast = new Map<number, Map<number, { first: any, last: any }>>();
 
         // New: Track curves per system AND STAFF for layout
@@ -693,7 +694,10 @@ export class VexFlowMusicSheetCalculator {
                     voiceIds.forEach(vid => notes.push(...staffData.vfVoices[vid]));
 
                     if (notes.length > 0) {
-                        notes.forEach(n => vfNoteToSystem.set(n, sysIdx));
+                        notes.forEach(n => {
+                            vfNoteToSystem.set(n, sysIdx);
+                            vfNoteToStaff.set(n, staffIdx);
+                        });
 
                         const sysMap = systemStaffFirstLast.get(sysIdx)!;
                         if (!sysMap.has(staffIdx)) {
@@ -703,6 +707,17 @@ export class VexFlowMusicSheetCalculator {
                         }
                     }
                 });
+
+                // Add Beams to System Curves (Cross-Staff support)
+                if (measureData.beams) {
+                    measureData.beams.forEach((beam: any) => {
+                        const indices = new Set<number>();
+                        beam.notes.forEach((n: any) => {
+                            if (vfNoteToStaff.has(n)) indices.add(vfNoteToStaff.get(n)!);
+                        });
+                        addToSystem(sysIdx, beam, Array.from(indices));
+                    });
+                }
             });
         });
 
