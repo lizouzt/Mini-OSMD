@@ -373,66 +373,138 @@ export class VexFlowMusicSheetDrawer {
         let currentOffset = 0;
 
         for (let i = 0; i < numStaves - 1; i++) {
-            let maxRequiredDistance = 80;
+            let maxOverlap = 60; // Default minimum distance (e.g. 6 lines)
 
             for (const measure of system) {
                 const upperStaff = measure.staves[i];
                 const lowerStaff = measure.staves[i + 1];
 
-                const upperBottom = this.measureStaffBottom(upperStaff, measure.width, measure.maxTicks);
-                const lowerTop = this.measureStaffTop(lowerStaff, measure.width);
+                const upperContours = this.computeStaffContours(upperStaff, measure.width, measure.maxTicks);
+                const lowerContours = this.computeStaffContours(lowerStaff, measure.width, measure.maxTicks);
 
-                const padding = 10;
-                const distance = upperBottom - lowerTop + padding;
+                // Calculate Max Overlap across the width
+                // Note: contours are based on 10px resolution
+                const len = Math.min(upperContours.bottomLine.length, lowerContours.skyline.length);
 
-                maxRequiredDistance = Math.max(maxRequiredDistance, distance);
+                for (let x = 0; x < len; x++) {
+                    // Distance needed = UpperBottom - LowerSkyline
+                    // Example: Upper bottom at +30. Lower top at -20. Distance needed: 30 - (-20) = 50.
+                    const dist = upperContours.bottomLine[x] - lowerContours.skyline[x];
+                    maxOverlap = Math.max(maxOverlap, dist);
+                }
             }
 
-            currentOffset += maxRequiredDistance;
+            const padding = 20;
+            currentOffset += maxOverlap + padding;
             offsets.push(currentOffset);
         }
         return offsets;
     }
 
-    private measureStaffBottom(staffData: any, width: number, maxTicks: number = 0): number {
-        let maxY = 80;
+    private computeStaffContours(staffData: any, width: number, maxTicks: number): { skyline: number[], bottomLine: number[] } {
+        const resolution = 10;
+        const numSamples = Math.ceil(width / resolution);
+        // Default: Top/Bottom of Staff (approx 0 to 80 for 5 lines with 10 spacing)
+        // VF Stave: Y=0 is top line? No, Y relative to stave. 
+        // We assume Stave Top Y = 0 locally. 
+        const skyline = new Array(numSamples).fill(0); // Top Line
+        const bottomLine = new Array(numSamples).fill(40); // Bottom Line (4 spaces * 10)
+
         const voiceIds = Object.keys(staffData.vfVoices || {});
-        if (voiceIds.length === 0) return maxY;
+        if (voiceIds.length === 0) return { skyline, bottomLine };
 
         const { voices, allNotes } = this.createVoices(staffData, maxTicks);
-        const dummyStave = new VF.Stave(0, 0, width);
-        new VF.Formatter().joinVoices(voices).format(voices, width - 50);
+        // Format to get X positions
+        // Note: This relies on the fact that formatting is deterministic and relative X matches final render
+        new VF.Formatter().joinVoices(voices).format(voices, width - 20); // Width - Padding
+
+        // Helper to update contour
+        const updateContour = (x: number, y: number, w: number, h: number) => {
+            const startIdx = Math.max(0, Math.floor(x / resolution));
+            const endIdx = Math.min(numSamples - 1, Math.floor((x + w) / resolution));
+
+            for (let i = startIdx; i <= endIdx; i++) {
+                // Skyline: MIN Y (Higher up is smaller Y)
+                skyline[i] = Math.min(skyline[i], y);
+                // BottomLine: MAX Y (Lower down is larger Y)
+                bottomLine[i] = Math.max(bottomLine[i], y + h);
+            }
+        };
 
         allNotes.forEach((note: any) => {
+            // Note X is relative to Stave X (which is 0 here)
+            // Note Y? 
+            // VexFlow notes don't provide easy absolute Y without Stave.
+            // But we can calculate from Keys/Line.
+            // Line 0 = Top Line. Line 4 = Bottom Line. Line Spacing = 10.
+            // Y = Line * 10.
+
+            // 1. Noteheads
+            // Simplify: use note.getAttribute("x") if available? No.
+            // Use formatted X (note.getAbsoluteX() is for current TickContext?)
+            // note.getNoteHeadBounds() might necessitate drawing?
+            // Fallback: note.getAbsoluteX() comes from TickContext.
+            // But Formatter usually sets `x` properties or modifiers on TickContext.
+
+            // Let's use `note.getAbsoluteX()` if available, else approximate.
+            // `Formatter` sets `x` on `TickContext` but maybe not individual notes directly?
+            // Actually `note.getStave()` is null here.
+            // We use `note.getTickContext().getX()`.
+            const tickContext = note.getTickContext();
+            if (!tickContext) return;
+            const noteX = tickContext.getX();
+
+            // Calculate Y Extents
+            let minY = 0;
+            let maxY = 40;
+
+            // Keys
             note.keys.forEach((k: any, idx: number) => {
                 const line = note.getKeyProps()[idx].line;
-                const noteY = line * 10;
-                maxY = Math.max(maxY, noteY + 20);
+                const y = line * 10;
+                minY = Math.min(minY, y - 10); // Notehead margin
+                maxY = Math.max(maxY, y + 10);
             });
-            const hasLyrics = note.modifiers.some((m: any) => m.category === "annotation");
-            if (hasLyrics) maxY += 30;
+
+            // Stem (Direction?)
+            // Safe check for Stem
+            if (note instanceof VF.StaveNote) {
+                const stemLen = 35; // Approx
+                try {
+                    const stemDir = note.getStemDirection();
+                    if (stemDir === VF.Stem.UP) minY = Math.min(minY, -10 - stemLen); // Top note - stem
+                    else maxY = Math.max(maxY, 40 + stemLen); // Bottom note + stem (Simplified)
+                } catch (e) {
+                    // Ignore NoStem errors
+                }
+            }
+
+            // Modifiers (Lyrics, Dynamics, Annotations)
+            note.modifiers.forEach((m: any) => {
+                if (m.category === "annotation" || m.category === "text") {
+                    // Check Vertical Justification
+                    // VF.Annotation.VerticalJustify: TOP=1, CENTER=2, BOTTOM=3, CENTER_STEM=4
+                    let isBottom = true;
+                    if (m.getVerticalJustification) {
+                        const just = m.getVerticalJustification();
+                        if (just === VF.Annotation.VerticalJustify.TOP) isBottom = false;
+                    }
+
+                    if (isBottom) maxY += 25;
+                    else minY -= 25;
+                }
+            });
+
+            // Update with a generic width (e.g. 20px)
+            updateContour(noteX, minY, 20, maxY - minY);
         });
 
-        return maxY;
-    }
+        // 2. Beams 
+        // Beams are separate elements, but typically attached to stems.
+        // If we strictly follow Stems (which we do), we cover most beam cases.
+        // Cross-staff beams are drawn later and are complex to bound here.
 
-    private measureStaffTop(staffData: any, width: number): number {
-        let minY = 0;
-        const voiceIds = Object.keys(staffData.vfVoices || {});
-        if (voiceIds.length === 0) return minY;
-
-        const allNotes: any[] = [];
-        for (const vid of voiceIds) allNotes.push(...staffData.vfVoices[vid]);
-
-        allNotes.forEach((note: any) => {
-            note.keys.forEach((k: any, idx: number) => {
-                const line = note.getKeyProps()[idx].line;
-                const noteY = line * 10;
-                minY = Math.min(minY, noteY - 20);
-            });
-        });
-
-        return minY;
+        return { skyline, bottomLine };
     }
 
     private createVoices(staffData: any, maxTicks: number = 0): { voices: any[], allNotes: any[] } {
