@@ -25,6 +25,23 @@ export class OpenSheetMusicDisplay {
         this.container.addEventListener("click", (event) => {
             this.handleMouseClick(event);
         });
+
+        // Virtual Rendering: Scroll Listener
+        let scrollTimeout: any;
+        this.container.addEventListener("scroll", () => {
+            if (scrollTimeout) cancelAnimationFrame(scrollTimeout);
+            scrollTimeout = requestAnimationFrame(() => this.onScroll());
+        });
+
+        // Responsive Resize: Observer
+        this.resizeObserver = new ResizeObserver(entries => {
+            // Simple debounce
+            if (this.resizeTimeout) clearTimeout(this.resizeTimeout);
+            this.resizeTimeout = setTimeout(() => {
+                this.onResize();
+            }, 200);
+        });
+        this.resizeObserver.observe(this.container);
     }
 
     private container: HTMLElement;
@@ -34,6 +51,9 @@ export class OpenSheetMusicDisplay {
     private graphicalSheet: GraphicalMusicSheet | undefined;
     private isDarkMode: boolean = false;
     private _zoom: number = 1.0;
+
+    private resizeObserver: ResizeObserver;
+    private resizeTimeout: any; // Timer ID
 
     public cursor: Cursor;
     public AudioPlayer: AudioPlayer;
@@ -109,25 +129,49 @@ export class OpenSheetMusicDisplay {
         const cursorIndex = this.cursor.iteratorIndex;
         const cursorHidden = this.cursor.hidden;
 
-        // Recreate drawer to reset VexFlow context/scale state cleanly
-        // This prevents accumulated transforms and ensures clean SVG
-        this.drawer = new VexFlowMusicSheetDrawer(this.container);
-
-
+        // Recreate drawer only if container changed (unlikely) or valid resize needed?
+        // Actually, we should reuse the drawer instance to preserve SVG element if possible, 
+        // OR just clear it. The drawer constructor removes existing SVGs. 
+        // If we reuse, we must ensure clear() is called (it is called in draw()).
+        // For existing logic parity, let's keep one instance.
+        // this.drawer = new VexFlowMusicSheetDrawer(this.container); <--- REMOVED
 
         this.graphicalSheet = new GraphicalMusicSheet(this.sheet);
         const width = this.container.clientWidth || 1000;
         const effectiveWidth = width / this.zoom;
 
         // format now returns noteMap as well
-        // Use a smaller margin (e.g. 20) to avoid excessive whitespace
         const { systems, curves, noteMap, metadata, partGroups } = VexFlowMusicSheetCalculator.format(this.graphicalSheet, this.sheet, effectiveWidth - 20);
 
-        // Draw returns measureBounds now
-        this.measureBounds = this.drawer.draw({ systems, curves, partGroups, metadata }, { darkMode: this.isDarkMode, zoom: this.zoom });
+        // 1. Prepare Layout
+        this.drawer.prepareLayout({ systems, curves, partGroups, metadata }, { darkMode: this.isDarkMode, zoom: this.zoom });
+
+        // 2. Generate Measure Bounds Map for Cursor (for ALL measures)
+        // This ensures Cursor works even if measure is not rendered yet
+        this.measureBounds = new Map<number, { topY: number, botY: number }>();
+        if (this.sheet) {
+            const measures = this.sheet.sourceMeasures;
+            for (let i = 0; i < measures.length; i++) {
+                // Measure Index is 0-based
+                const bounds = this.drawer.getMeasureBounds(i);
+                if (bounds) {
+                    this.measureBounds.set(i, bounds);
+                }
+            }
+        }
+
+        // 3. Initial Render (Visible Viewport)
+        this.updateViewportRender();
+
+        // 4. Setup Scroll Listener (Debounced)
+        // Remove old listener if exists? changing 'this.render' creates closure issues.
+        // Ideally we bind once in constructor. But we rely on 'this.drawer' state which is refreshed here.
+        // Since 'this.drawer' is now permanent, constructor binding is fine.
+        // But verifying we don't duplicate listeners?
+        // We added listener in constructor below? No, I need to add it now or in constructor.
+        // Let's add it in constructor for cleanliness. Here we just trigger update.
 
         // Initialize Cursor with Sheet logic, Graphic map, and Layout bounds
-        // Note: Cursor needs new noteMap and bounds
         this.cursor.init(this.sheet, noteMap, this.measureBounds);
 
         // Restore cursor state
@@ -137,6 +181,41 @@ export class OpenSheetMusicDisplay {
         } else {
             this.cursor.hide();
         }
+    }
+
+    private onScroll(): void {
+        this.updateViewportRender();
+    }
+
+    private updateViewportRender(): void {
+        if (!this.container) return;
+        const scrollTop = this.container.scrollTop;
+        const clientHeight = this.container.clientHeight;
+
+        // Render visible
+        this.drawer.render({ top: scrollTop, height: clientHeight });
+    }
+
+    private onResize(): void {
+        // Only render if sheet is loaded and container has width
+        if (this.sheet && this.container.clientWidth > 0) {
+            console.log(`[OSMD] Resize detected. Width: ${this.container.clientWidth}. Re-rendering.`);
+            this.render();
+        }
+    }
+
+    /**
+     * Dispose the OSMD instance to release resources.
+     */
+    public dispose(): void {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+        if (this.resizeTimeout) {
+            clearTimeout(this.resizeTimeout);
+        }
+        // Potential: Clear container?
+        // this.container.innerHTML = "";
     }
 
     /**
@@ -155,25 +234,33 @@ export class OpenSheetMusicDisplay {
         }
 
         const rect = this.container.getBoundingClientRect();
-        const x = (event.clientX - rect.left) / this.zoom;
-        const y = (event.clientY - rect.top) / this.zoom;
+        const x = (event.clientX - rect.left); // Mouse relative to container (visible)
+        const y = (event.clientY - rect.top) + this.container.scrollTop; // + Scroll for absolute Y
 
-        console.log(`Click at Y=${y}, X=${x} (Zoom: ${this.zoom})`);
-        console.log(`MeasureBounds sizeRef: ${this.measureBounds.size}`);
+        // Note: getMeasureAt expects absolute Y (relative to document top 0) if zoomed?
+        // My drawer logic uses adjustedY = y / zoom.
+        // And drawer layout Y starts at 0.
+        // Is container.scrollTop included in the coordinate system of the SVG?
+        // The SVG is typically sized to full height, so scrollTop is handled by browser scrolling the SVG.
+        // So event.clientY in container is relative to viewport.
+        // We need (ViewportY + ScrollTop).
 
-        // Iterate through known measure bounds to find the clicked measure
-        for (const [measureIndex, bounds] of this.measureBounds.entries()) {
-            // console.log(`Checking M${measureIndex}: [${bounds.topY}, ${bounds.botY}]`);
-            if (y >= bounds.topY && y <= bounds.botY) {
-                console.log(`Clicked Measure Index: ${measureIndex}`);
+        // Wait, if the SVG is inside the container and we scroll the container, 
+        // event.clientY relative to rect.top IS the visual position.
+        // But the hit test needs the logical position on the SVG.
+        // If SVG is scrolled up, logical Y = visual Y + scrollTop.
 
-                // We need to implement setMeasure in Cursor or manually iterate
-                if ((this.cursor as any).setMeasure) {
-                    (this.cursor as any).setMeasure(measureIndex);
-                } else {
-                    console.warn("Cursor.setMeasure not implemented yet");
-                }
-                return;
+        const absoluteY = (event.clientY - rect.top) + this.container.scrollTop;
+        const absoluteX = (event.clientX - rect.left) + this.container.scrollLeft;
+
+        console.log(`Click at AbsY=${absoluteY}, AbsX=${absoluteX} (Zoom: ${this.zoom})`);
+
+        const measureIndex = this.drawer.getMeasureAt(absoluteX, absoluteY, this.zoom);
+
+        if (measureIndex !== undefined) {
+            console.log(`Clicked Measure Index: ${measureIndex}`);
+            if ((this.cursor as any).setMeasure) {
+                (this.cursor as any).setMeasure(measureIndex);
             }
         }
     }

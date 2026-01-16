@@ -48,39 +48,37 @@ export class VexFlowMusicSheetDrawer {
         return currentY + 20; // Add padding
     }
 
+    private systemLayouts: { y: number, height: number, systemIndex: number }[] = [];
+    private lastDrawData: any = null;
+    private lastOptions: any = {};
+    private totalHeight: number = 0;
+
     public clear(): void {
         this.ctx.clear();
     }
 
     public draw(data: { systems: any[][], curves: any[], systemStaffCurves?: Map<number, Map<number, any[]>>, partGroups?: any[], metadata?: { title: string | undefined, composer: string | undefined } }, options: { darkMode?: boolean, zoom?: number } = {}): Map<number, { topY: number, botY: number }> {
-        const { systems, curves, systemStaffCurves, partGroups, metadata } = data;
-        const { darkMode, zoom = 1.0 } = options;
+        // 1. Prepare Layout (Calculate Y positions)
+        this.prepareLayout(data, options);
 
-        this.ctx.clear();
+        // 2. Render All (default behavior)
+        return this.render(null); // null viewport = render all
+    }
 
-        // Native Dark Mode Styling
-        const color = darkMode ? "#FFFFFF" : "#000000";
-        const style = { fillStyle: color, strokeStyle: color };
+    public prepareLayout(data: any, options: any): void {
+        this.lastDrawData = data;
+        this.lastOptions = options;
+        this.systemLayouts = [];
 
-        this.ctx.setFillStyle(color);
-        this.ctx.setStrokeStyle(color);
-
-        // Remove CSS filters if any
-        this.renderer.ctx.element.style.filter = "none";
-        this.renderer.ctx.element.style.display = "block"; // Fix alignment issues
-
-        const startX = 10;
-        let x = startX;
+        const { systems, systemStaffCurves, metadata } = data;
         let y = 50; // Initial Top Margin
 
-        if (metadata) {
-            y = this.drawTitleAndComposer(metadata, y, color);
+        // Title Height
+        if (metadata && (metadata.title || metadata.composer)) {
+            y += (metadata.title ? 40 : 0) + (metadata.composer ? 20 : 0) + 20;
         }
 
-        // Map<MeasureNumber, Bounds>
-        const measureBounds = new Map<number, { topY: number, botY: number }>();
-
-        // Loop Systems
+        // Loop Systems to Calculate Y AND Assign Staves
         for (let sysIdx = 0; sysIdx < systems.length; sysIdx++) {
             const system = systems[sysIdx];
             const currentSysCurves = systemStaffCurves?.get(sysIdx);
@@ -88,180 +86,103 @@ export class VexFlowMusicSheetDrawer {
             // 1. Calculate Vertical Layout for this System
             const staffYOffsets = this.calculateSystemLayout(system, currentSysCurves);
 
-            // 2. Determine System Height
-            let maxSystemBottom = 0;
-            let systemDist = 80; // Default system distance
-
-            const firstMeasure = system[0];
-            let currentStartX = startX;
-
-            // Check for Page Break & Page Layout
-            if (firstMeasure) {
-                // Check attributes from first staff of first measure
-                const firstStaff = firstMeasure.staves[0];
-
-                // Handle Page Break
-                if (sysIdx > 0 && firstStaff.printNewPage) { // Only break if not first system
-                    y += 80; // Extra gap
-
-                    // Draw Visual Separator
-                    this.ctx.save();
-                    this.ctx.setStrokeStyle("#dddddd");
-                    this.ctx.setLineWidth(2);
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(20, y - 40);
-                    this.ctx.lineTo(this.container.clientWidth - 20, y - 40);
-                    this.ctx.stroke();
-
-                    // Draw "Page X" label?
-                    // this.ctx.fillText("Page ...", 20, y - 50);
-
-                    this.ctx.restore();
-                }
-
-                // Handle Page Margins
-                if (firstStaff.pageLayout && firstStaff.pageLayout.margins) {
-                    if (firstStaff.pageLayout.margins.left !== undefined) {
-                        currentStartX = firstStaff.pageLayout.margins.left;
-                    }
-                }
-
-                // Handle System Logic
-                if (firstMeasure.systemDistance !== undefined) systemDist = firstMeasure.systemDistance;
-                if (sysIdx === 0 && firstMeasure.topSystemDistance !== undefined) {
-                    if (this.ctx.element) this.ctx.element.style.marginTop = `${firstMeasure.topSystemDistance}px`;
+            // 2. Iterate Measures to Create Staves and Assign Notes
+            let x = 10;
+            let currentStartX = 10;
+            // Check first measure for margins
+            if (system.length > 0) {
+                const firstM = system[0];
+                if (firstM.staves[0].pageLayout?.margins?.left !== undefined) {
+                    currentStartX = firstM.staves[0].pageLayout.margins.left;
                 }
             }
-
             x = currentStartX;
 
-            // 3. Draw Measures
             for (const measureData of system) {
-                // Group Measure Elements (OSMD Structure Parity)
-                if (this.ctx.openGroup) {
-                    this.ctx.openGroup("measure", `measure-${measureData.measureNumber}`);
+                const measureTopY = y;
+                const vfStaves: any[] = []; // Local array for alignment
+
+                // Create Staves for this measure
+                for (let staffIndex = 0; staffIndex < measureData.staves.length; staffIndex++) {
+                    const staffData = measureData.staves[staffIndex];
+                    if (staffYOffsets.length > staffIndex) {
+                        const staveY = measureTopY + staffYOffsets[staffIndex];
+
+                        // Create VexFlow Stave
+                        const vfStave = new VF.Stave(x, staveY, measureData.width);
+
+                        // Add Modifiers
+                        if (staffData.clef || x === currentStartX) vfStave.addClef(staffData.clef || "treble");
+                        if (staffData.keySignature) vfStave.addKeySignature(staffData.keySignature);
+                        if (staffData.timeSignature) vfStave.addTimeSignature(staffData.timeSignature);
+
+                        const endBarType = measureData.endBarLineType !== undefined ? measureData.endBarLineType : VF.Barline.type.SINGLE;
+                        vfStave.setEndBarType(endBarType);
+
+                        if (staffData.voltaType !== undefined && staffData.voltaType !== VF.Volta.type.NONE) {
+                            vfStave.setVoltaType(staffData.voltaType, staffData.voltaNumber || "1", 0);
+                        }
+
+                        (staffData as any).vfStaveInstance = vfStave; // Cache it
+                        vfStaves.push(vfStave);
+
+                        // CREATE VOICES & ASSIGN STAVE
+                        const voiceIds = Object.keys(staffData.vfVoices || {});
+                        if (voiceIds.length > 0) {
+                            const res = this.createVoices(staffData, measureData.maxTicks);
+                            (staffData as any).tempVoices = res.voices;
+                            (staffData as any).tempAllNotes = res.allNotes;
+
+                            // Assign Stave to Notes (Critical for Cursor)
+                            if (res.allNotes) {
+                                res.allNotes.forEach((note: any) => {
+                                    if (note.setStave) note.setStave(vfStave);
+                                    // Apply Styles needed for Formatting (Stem Direction etc)
+                                    // if (note.setStyle) note.setStyle(style); // Accessing style requires options.
+                                });
+                            }
+                        }
+                    }
                 }
 
-                // ---------------------------------------------------------------------
-
-                const staves = measureData.staves;
-
-                // Prepare VexFlow Staves
-                const vfStaves: any[] = [];
-                let measureTopY = Number.MAX_VALUE;
-                let measureBotY = Number.MIN_VALUE;
-
-                staves.forEach((staffData: any, index: number) => {
-                    // Use calculated Offset
-                    const currentY = y + staffYOffsets[index];
-
-                    const stave = new VF.Stave(x, currentY, measureData.width);
-
-                    if (staffData.clef || x === startX) {
-                        stave.addClef(staffData.clef || "treble");
-                    }
-                    if (staffData.keySignature) {
-                        stave.addKeySignature(staffData.keySignature);
-                    }
-                    if (staffData.timeSignature) {
-                        stave.addTimeSignature(staffData.timeSignature);
-                    }
-
-                    // Default to Single Barline if not specified
-                    const endBarType = measureData.endBarLineType !== undefined ? measureData.endBarLineType : VF.Barline.type.SINGLE;
-                    stave.setEndBarType(endBarType);
-
-                    if (staffData.voltaType !== undefined && staffData.voltaType !== VF.Volta.type.NONE) {
-                        stave.setVoltaType(staffData.voltaType, staffData.voltaNumber || "1", 0);
-                    }
-
-                    vfStaves.push(stave);
-                });
-
-                // --- ALIGNMENT FIX: Synchronize NoteStartX across all staves ---
+                // ALIGNMENT & FORMATTING (Calculate X positions)
                 let maxNoteStartX = 0;
                 vfStaves.forEach(stave => {
-                    // We need to format the stave to calculate modifiers (VexFlow does this implicitly on draw, but we can call it)
-                    // But we haven't drawn yet. format() calculates x positions of modifiers.
-                    stave.format();
-                    if (stave.getNoteStartX() > maxNoteStartX) {
-                        maxNoteStartX = stave.getNoteStartX();
-                    }
+                    stave.format(); // formatting adds StartX
+                    if (stave.getNoteStartX() > maxNoteStartX) maxNoteStartX = stave.getNoteStartX();
                 });
-
                 vfStaves.forEach(stave => stave.setNoteStartX(maxNoteStartX));
 
-                // Now Draw Staves and Voices
-                vfStaves.forEach((stave, index) => {
-                    this.ctx.setFillStyle(color);
-                    this.ctx.setStrokeStyle(color);
-                    stave.setContext(this.ctx).draw();
-
-                    // Track bounds
-                    const sTop = stave.getY();
-                    const sBot = stave.getBottomY();
-                    if (sTop < measureTopY) measureTopY = sTop;
-                    if (sBot > measureBotY) measureBotY = sBot;
-
-                    // Prepare Voices
-                    const staffData = staves[index];
-                    const voiceIds = Object.keys(staffData.vfVoices || {});
-                    if (voiceIds.length > 0) {
-                        const res = this.createVoices(staffData, measureData.maxTicks);
-                        staffData.tempVoices = res.voices;
-                        staffData.tempAllNotes = res.allNotes;
-                    }
-                });
-
-                // Collect All Voices for Global Formatting
+                // Formatting Logic
                 const allVoicesInMeasure: any[] = [];
-                staves.forEach((staffData: any) => {
-                    if (staffData.tempVoices) {
-                        allVoicesInMeasure.push(...staffData.tempVoices);
-                    }
-                });
+                measureData.staves.forEach((sd: any) => { if (sd.tempVoices) allVoicesInMeasure.push(...sd.tempVoices); });
 
-                // Global Formatting
                 let globalFormatSuccess = false;
                 if (allVoicesInMeasure.length > 0) {
                     try {
-                        // Available width depends on the new aligned NoteStartX
                         const availWidth = Math.max(50, measureData.width - (maxNoteStartX - x) - 10);
                         new VF.Formatter().joinVoices(allVoicesInMeasure).format(allVoicesInMeasure, availWidth);
                         globalFormatSuccess = true;
-                    } catch (e) {
-                        console.warn(`[Layout] Measure ${measureData.measureNumber}: Global alignment failed.`, e);
-                    }
+                    } catch (e) { }
                 }
 
-                // Draw Voices
-                vfStaves.forEach((stave, index) => {
-                    const staffData = staves[index];
-                    const voices = staffData.tempVoices;
-                    const allNotes = staffData.tempAllNotes;
-
-                    if (voices && voices.length > 0) {
-                        // Apply Style
-                        allNotes.forEach((note: any) => {
-                            if (note.setStyle) note.setStyle(style);
-                            if (note.setStemStyle) note.setStemStyle(style);
-                            if (note.setLedgerLineStyle) note.setLedgerLineStyle(style);
-                        });
-
-                        // Fallback Formatting
-                        if (!globalFormatSuccess) {
-                            const noteStartX = stave.getNoteStartX(); // Should be maxNoteStartX now
-                            const startOffset = noteStartX - stave.getX();
-                            const availableWidth = Math.max(50, measureData.width - startOffset - 10);
-                            try {
-                                new VF.Formatter().joinVoices(voices).format(voices, availableWidth);
-                            } catch (e) {
-                                new VF.Formatter().format(voices, availableWidth);
-                            }
+                // Fallback Formatting
+                if (!globalFormatSuccess) {
+                    measureData.staves.forEach((sd: any, index: number) => {
+                        const voices = sd.tempVoices;
+                        const stave = vfStaves[index];
+                        if (voices) {
+                            const nsx = stave.getNoteStartX();
+                            const avail = Math.max(50, measureData.width - (nsx - stave.getX()) - 10);
+                            try { new VF.Formatter().joinVoices(voices).format(voices, avail); } catch (e) { new VF.Formatter().format(voices, avail); }
                         }
+                    });
+                }
 
-                        // Force Apply Stem Direction
-                        voices.forEach((v: any) => {
+                // Apply Stem Directions
+                measureData.staves.forEach((sd: any) => {
+                    if (sd.tempVoices) {
+                        sd.tempVoices.forEach((v: any) => {
                             v.getTickables().forEach((t: any) => {
                                 if (t.sourceNote && t.sourceNote.stemDirectionXml) {
                                     if (t.sourceNote.stemDirectionXml === "up") t.setStemDirection(VF.Stem.UP);
@@ -269,11 +190,185 @@ export class VexFlowMusicSheetDrawer {
                                 }
                             });
                         });
+                    }
+                });
 
-                        voices.forEach((v: any) => v.draw(this.ctx, stave));
+                x += measureData.width;
+            }
 
-                        // Draw Tuplets (Beams moved to Global Measure Level)
-                        // if (staffData.beams) ... REMOVED
+            // 3. Determine System Height
+            const lastStaffIdx = staffYOffsets.length - 1;
+            const systemHeightEstimate = staffYOffsets[lastStaffIdx] + 120;
+
+            // Handle Page Break Gap in Y
+            const firstMeasure = system[0];
+            if (firstMeasure) {
+                const firstStaff = firstMeasure.staves[0];
+                if (sysIdx > 0 && firstStaff.printNewPage) {
+                    y += 80;
+                }
+            }
+
+            // Store Layout
+            this.systemLayouts.push({
+                y: y,
+                height: systemHeightEstimate,
+                systemIndex: sysIdx
+            });
+
+            // Advance Y
+            y += systemHeightEstimate;
+        }
+
+        this.totalHeight = y;
+    }
+
+    public render(viewport: { top: number, height: number } | null): Map<number, { topY: number, botY: number }> {
+        const data = this.lastDrawData;
+        const options = this.lastOptions;
+        if (!data) return new Map();
+
+        const { systems, curves, systemStaffCurves, partGroups, metadata } = data;
+        const { darkMode, zoom = 1.0 } = options;
+
+        this.ctx.clear();
+
+        // Style
+        const color = darkMode ? "#FFFFFF" : "#000000";
+        const style = { fillStyle: color, strokeStyle: color };
+        this.ctx.setFillStyle(color);
+        this.ctx.setStrokeStyle(color);
+        this.renderer.ctx.element.style.filter = "none";
+        this.renderer.ctx.element.style.display = "block";
+
+        // Resize SVG container to total height immediately
+        const visualWidth = this.container.clientWidth;
+        const logicalHeight = this.totalHeight + 50;
+        const visualHeight = logicalHeight * zoom;
+
+        if (this.renderer.resize) {
+            this.renderer.resize(visualWidth, visualHeight);
+            const logicalWidth = visualWidth / zoom;
+            this.ctx.svg.setAttribute("viewBox", `0 0 ${logicalWidth} ${logicalHeight}`);
+        }
+
+        // Draw Title (Always if top of sheet is visible OR just draw it)
+        // Simply check if 0 is in viewport?
+        if (!viewport || viewport.top < 200) { // Approx title height
+            this.drawTitleAndComposer(metadata, 50, color);
+        }
+
+        const measureBounds = new Map<number, { topY: number, botY: number }>();
+        const startX = 10;
+
+        // Render Visible Systems
+        let visibleCount = 0;
+        for (const layout of this.systemLayouts) {
+            // Visibility Check
+            if (viewport) {
+                const sysTop = layout.y * zoom; // Zoom visual check?
+                const sysBot = (layout.y + layout.height + 60) * zoom; // Include gap
+                const viewTop = viewport.top;
+                const viewBot = viewport.top + viewport.height;
+
+                // Intersection check
+                if (sysBot < viewTop || sysTop > viewBot) {
+                    continue; // Skip rendering
+                }
+            }
+            visibleCount++;
+
+            const sysIdx = layout.systemIndex;
+            const system = systems[sysIdx];
+            const currentSysCurves = systemStaffCurves?.get(sysIdx);
+
+            // Re-calc layout? Or use cached?
+            // calculateSystemLayout depends on curves and context. Fast enough to re-run?
+            // Yes, "Layout Phase 1" was dry run. Now real run.
+            // Ideally we cache offsets. But simpler to re-calc than store massive arrays.
+            // Optim: Cache offsets in systemLayouts object?
+            // Let's re-calc for robustness first MVP.
+            const staffYOffsets = this.calculateSystemLayout(system, currentSysCurves);
+
+            let y = layout.y; // Use pre-calculated Y
+            let x = startX;
+
+            // System Drawing Logic (Copied from original draw)
+            let maxSystemBottom = 0;
+            let systemDist = 80;
+            const firstMeasure = system[0];
+            let currentStartX = startX;
+
+            // Page Break Visuals (Check again to draw line)
+            if (firstMeasure) {
+                const firstStaff = firstMeasure.staves[0];
+                if (sysIdx > 0 && firstStaff.printNewPage) {
+                    // y was incremented in prepareLayout. Use that.
+                    // But we need to draw the line relative to y.
+                    // In prepareLayout: if PageBreak, y+=80.
+                    // Here y is the StartY of the system. So the gap is ABOVE y.
+
+                    this.ctx.save();
+                    this.ctx.setStrokeStyle("#dddddd");
+                    this.ctx.setLineWidth(2);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(20, y - 40); // 40px above start
+                    this.ctx.lineTo(this.container.clientWidth - 20, y - 40);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+                if (firstStaff.pageLayout && firstStaff.pageLayout.margins) {
+                    if (firstStaff.pageLayout.margins.left !== undefined) currentStartX = firstStaff.pageLayout.margins.left;
+                }
+                if (firstMeasure.systemDistance !== undefined) systemDist = firstMeasure.systemDistance;
+            }
+
+            x = currentStartX;
+
+            // Draw Measures in System
+            for (const measureData of system) {
+                if (this.ctx.openGroup) {
+                    this.ctx.openGroup("measure", `measure-${measureData.measureNumber}`);
+                }
+
+                const staves = measureData.staves;
+                // Prepare VexFlow Staves
+                const vfStaves: any[] = [];
+                let measureTopY = Number.MAX_VALUE;
+                let measureBotY = Number.MIN_VALUE;
+
+                // 1. Draw Staves
+                staves.forEach((staffData: any) => {
+                    const vfStave = (staffData as any).vfStaveInstance;
+                    if (vfStave) {
+                        this.ctx.setFillStyle(color);
+                        this.ctx.setStrokeStyle(color);
+                        vfStave.setContext(this.ctx).draw();
+                        vfStaves.push(vfStave);
+
+                        if (vfStave.getY() < measureTopY) measureTopY = vfStave.getY();
+                        if (vfStave.getBottomY() > measureBotY) measureBotY = vfStave.getBottomY();
+                    }
+                });
+
+                // 2. Draw Voices (using cached voices from prepareLayout)
+                staves.forEach((staffData: any, index: number) => {
+                    const vfStave = vfStaves[index];
+                    const voices = (staffData as any).tempVoices;
+                    const allNotes = (staffData as any).tempAllNotes;
+
+                    if (voices && vfStave) {
+                        // Re-Apply Style (needed for DarkMode toggle)
+                        if (allNotes) {
+                            allNotes.forEach((n: any) => {
+                                if (n.setStyle) n.setStyle(style);
+                                if (n.setStemStyle) n.setStemStyle(style);
+                                if (n.setLedgerLineStyle) n.setLedgerLineStyle(style);
+                            });
+                        }
+
+                        voices.forEach((v: any) => v.draw(this.ctx, vfStave));
+
                         if (staffData.vfTuplets) {
                             staffData.vfTuplets.forEach((t: any) => {
                                 this.ctx.setFillStyle(color);
@@ -281,48 +376,35 @@ export class VexFlowMusicSheetDrawer {
                                 try { t.setContext(this.ctx).draw(); } catch (e) { }
                             });
                         }
-
-                        // Calculate visual bottom for system spacing (System Logic remains similar)
-                        let staffVisualBottom = stave.getY() + 100;
-                        // ... (simplified check for height)
-                        maxSystemBottom = Math.max(maxSystemBottom, staffVisualBottom);
-                    } else {
-                        maxSystemBottom = Math.max(maxSystemBottom, stave.getY() + 100);
                     }
                 });
 
-                // DRAW CROSS-STAFF BEAMS (Global for Measure)
-                // Draw after all staves/voices in measure are rendered so stems are ready.
+                // 3. Beams
                 if (measureData.beams) {
                     measureData.beams.forEach((beam: any) => {
                         if (beam.setStyle) beam.setStyle(style);
                         this.ctx.setFillStyle(color);
                         this.ctx.setStrokeStyle(color);
-                        try { beam.setContext(this.ctx).draw(); } catch (e) {
-                            console.warn("Beam draw error", e);
-                        }
+                        try { beam.setContext(this.ctx).draw(); } catch (e) { }
                     });
                 }
 
-                // Connectors (Left side of system)
-                if (x === startX) {
-                    // Check for Part Groups and Draw Connectors
+                // 4. Connectors
+                // Check if this is the first measure (x === startX)
+                // Use vfStave.getX() to be precise
+                if (vfStaves.length > 0 && Math.abs(vfStaves[0].getX() - currentStartX) < 1) {
                     if (partGroups) {
                         partGroups.forEach(group => {
                             const startIdx = group.startStaffId - 1;
                             const endIdx = group.endStaffId - 1;
-
-                            // Check bounds
                             if (startIdx >= 0 && endIdx < vfStaves.length && startIdx <= endIdx) {
                                 const topStave = vfStaves[startIdx];
                                 const bottomStave = vfStaves[endIdx];
-
                                 let type = VF.StaveConnector.type.BRACE;
                                 if (group.groupSymbol === "bracket") type = VF.StaveConnector.type.BRACKET;
                                 else if (group.groupSymbol === "brace") type = VF.StaveConnector.type.BRACE;
                                 else if (group.groupSymbol === "line") type = VF.StaveConnector.type.SINGLE_LEFT;
                                 else if (group.groupSymbol === "square") type = VF.StaveConnector.type.SINGLE_LEFT;
-
                                 const connector = new VF.StaveConnector(topStave, bottomStave);
                                 connector.setType(type);
                                 this.ctx.setFillStyle(color);
@@ -331,8 +413,6 @@ export class VexFlowMusicSheetDrawer {
                             }
                         });
                     }
-
-                    // Always draw SingleLine connecting all staves of the system (standard)
                     if (vfStaves.length > 1) {
                         const lineConnector = new VF.StaveConnector(vfStaves[0], vfStaves[vfStaves.length - 1]);
                         lineConnector.setType(VF.StaveConnector.type.SINGLE_LEFT);
@@ -342,60 +422,41 @@ export class VexFlowMusicSheetDrawer {
                     }
                 }
 
-                // Closing System Connector (Right side of system)
+                // Right Connector
                 const isLastMeasure = system.indexOf(measureData) === system.length - 1;
                 if (isLastMeasure && vfStaves.length > 1) {
                     const topStave = vfStaves[0];
                     const botStave = vfStaves[vfStaves.length - 1];
                     const lineX = topStave.getX() + topStave.getWidth();
-                    const topY = topStave.getYForLine(0);
-                    const botY = botStave.getYForLine(botStave.getNumLines() - 1);
-
                     this.ctx.beginPath();
                     this.ctx.setStrokeStyle(color);
                     this.ctx.setLineWidth(1.5);
-                    this.ctx.moveTo(lineX, topY);
-                    this.ctx.lineTo(lineX, botY);
+                    this.ctx.moveTo(lineX, topStave.getYForLine(0));
+                    this.ctx.lineTo(lineX, botStave.getYForLine(botStave.getNumLines() - 1));
                     this.ctx.stroke();
                 }
 
-                // Store measure bounds (system-wide)
-                measureBounds.set(measureData.measureIndex, {
-                    topY: measureTopY,
-                    botY: measureBotY
-                });
+                measureBounds.set(measureData.measureIndex, { topY: measureTopY, botY: measureBotY });
 
+                if (this.ctx.closeGroup) this.ctx.closeGroup();
                 x += measureData.width;
-            }
+            } // End Measure Loop
+        } // End System Loop
 
-            // Next System Y
-            y = maxSystemBottom + 60;
-        }
-
+        // Curves (Global) - Filter by Viewport?
+        // Curves are tricky because they span systems.
+        // For MVP: Draw ALL curves? Or try to filter?
+        // Check curve.from/to Y bounding box.
+        // If we draw all, performance impact is low (few curves compared to notes).
+        // Let's draw all for now to avoid complexity of bounding box calculation for curves.
         if (curves) {
             this.ctx.setStrokeStyle(color);
             this.ctx.setFillStyle(color);
             curves.forEach(curve => {
                 try {
                     curve.setContext(this.ctx).draw();
-                } catch (e) {
-                    console.warn(`[Curve Draw Error] Curve Error:`, e);
-                }
+                } catch (e) { }
             });
-        }
-
-        if (this.renderer.resize) {
-            // Fix Zoom: Use ViewBox scaling instead of Context scaling to prevent double-scale / whitespace
-            const visualWidth = this.container.clientWidth;
-            const logicalHeight = y + 50; // Use actual content height logic
-            const visualHeight = logicalHeight * zoom;
-
-            // Set SVG attributes (visual size)
-            this.renderer.resize(visualWidth, visualHeight);
-
-            // Set ViewBox (logical size)
-            const logicalWidth = visualWidth / zoom;
-            this.ctx.svg.setAttribute("viewBox", `0 0 ${logicalWidth} ${logicalHeight}`);
         }
 
         return measureBounds;
@@ -655,6 +716,101 @@ export class VexFlowMusicSheetDrawer {
         // Cross-staff beams are drawn later and are complex to bound here.
 
         return { skyline, bottomLine };
+    }
+
+    /**
+     * Get the measure index at the given coordinates (relative to container).
+     * Uses the calculated System Layout.
+     */
+    public getMeasureAt(x: number, y: number, zoom: number): number | undefined {
+        const adjustedY = y / zoom;
+        const adjustedX = x / zoom;
+
+        // Find System
+        // Binary search or linear scan (linear is fine for < 1000 systems)
+        let foundSystem: any = null;
+        let foundSysLayout: any = null;
+
+        for (const layout of this.systemLayouts) {
+            // Check Y (include gaps)
+            if (adjustedY >= layout.y && adjustedY <= layout.y + layout.height + 60) {
+                foundSystem = this.lastDrawData.systems[layout.systemIndex];
+                foundSysLayout = layout;
+                break;
+            }
+        }
+
+        if (!foundSystem) return undefined;
+
+        // Find Measure in System
+        // We need X start.
+        // Similar logic to draw loop
+        // If we don't cache X positions, we re-calculate? 
+        // We know measures are sequential in X.
+
+        // Handle Page Margins/Indents from first measure
+        let currentX = 10; // Default startX
+        const firstMeasure = foundSystem[0];
+        if (firstMeasure) {
+            const firstStaff = firstMeasure.staves[0];
+            if (firstStaff.pageLayout && firstStaff.pageLayout.margins && firstStaff.pageLayout.margins.left !== undefined) {
+                currentX = firstStaff.pageLayout.margins.left;
+            }
+        }
+
+        for (const measureData of foundSystem) {
+            if (adjustedX >= currentX && adjustedX <= currentX + measureData.width) {
+                return measureData.measureIndex;
+            }
+            currentX += measureData.width;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Get bounds for a specific measure index.
+     * Useful for Cursor when the measure might not be legally rendered yet, 
+     * or we want fast lookup without re-rendering.
+     */
+    public getMeasureBounds(measureIndex: number): { topY: number, botY: number } | undefined {
+        // Find which system contains this measure
+        // We can pre-map measureIndex -> systemIndex but simple search is OK.
+        // Or optimize: Store measureIndex range in SystemLayout.
+
+        const systems = this.lastDrawData?.systems;
+        if (!systems) return undefined;
+
+        for (const layout of this.systemLayouts) {
+            const system = systems[layout.systemIndex];
+            // Check if measure in system
+            // Measures are ordered? Yes.
+            if (system.length > 0) {
+                const first = system[0].measureIndex;
+                const last = system[system.length - 1].measureIndex;
+                if (measureIndex >= first && measureIndex <= last) {
+                    // Found system.
+                    // Y = layout.y
+                    // Height = layout.height (Approx)
+                    // To be precise, we want Top/Bot Y of the staves.
+                    // The layout.height is (offset + 120).
+                    // topY = layout.y
+                    // botY = layout.y + layout.height.
+                    // This is "Good Enough" for cursor? Cursor draws line from top to bot.
+                    // If we want exact staff extension, we need calculateSystemLayout offsets.
+
+                    // Let's refine:
+                    // We can re-call calculateSystemLayout.
+                    // Or just use the System Bounds.
+
+                    return {
+                        topY: layout.y,
+                        botY: layout.y + layout.height
+                    };
+                }
+            }
+        }
+        return undefined;
     }
 
     private createVoices(staffData: any, maxTicks: number = 0): { voices: any[], allNotes: any[] } {

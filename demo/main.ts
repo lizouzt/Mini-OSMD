@@ -130,6 +130,7 @@ if (container && selectElement) {
         { name: "Test Auto Multirest", value: "multirest", url: multirestUrl },
         { name: "Test Slurs High Notes", value: "slurs", url: slursUrl },
         { name: "Chord Symbols Test", value: "chords", url: "/demo/chords_test.musicxml?url" },
+        { name: "Virtual Rendering Test (100 msrs)", value: "virtual_test", url: "/demo/virtual_test.musicxml?url" },
         { name: "OSMD Function Test All", value: "function_test", url: functionTestUrl }
     ];
 

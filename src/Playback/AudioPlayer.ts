@@ -181,22 +181,71 @@ export class AudioPlayer {
     private playEvent(event: AudioEvent, time: number): void {
         if (!this.audioContext) return;
 
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
+        // Piano Synthesis Patch
+        // Oscillator 1: Triangle for harmonics (The "Wire")
+        const osc1 = this.audioContext.createOscillator();
+        osc1.type = "triangle";
+        osc1.frequency.value = event.pitch;
 
-        oscillator.type = "triangle"; // Better than sine
-        oscillator.frequency.value = event.pitch;
+        // Oscillator 2: Sine for fundamental body
+        const osc2 = this.audioContext.createOscillator();
+        osc2.type = "sine";
+        osc2.frequency.value = event.pitch;
 
-        // Simple Envelope
-        gainNode.gain.setValueAtTime(0, time);
-        gainNode.gain.linearRampToValueAtTime(0.2, time + 0.05); // Attack
-        gainNode.gain.exponentialRampToValueAtTime(0.001, time + Math.max(0.1, event.duration)); // Decay
+        // Filter: Lowpass to simulate energy loss/decay of high harmonics
+        const filter = this.audioContext.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(event.pitch * 6, time); // Start bright
+        // Decay brightness quickly
+        filter.frequency.exponentialRampToValueAtTime(event.pitch * 1.5, time + 0.5);
 
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
+        // Amps for blending oscs
+        const osc1Gain = this.audioContext.createGain();
+        const osc2Gain = this.audioContext.createGain();
 
-        oscillator.start(time);
-        oscillator.stop(time + Math.max(0.1, event.duration));
+        // Osc 1 (Triangle) provides the "attack" bite, simpler decay
+        osc1Gain.gain.setValueAtTime(0.4, time);
+        osc1Gain.gain.exponentialRampToValueAtTime(0.01, time + 0.8);
+
+        // Osc 2 (Sine) provides the "sustain" body
+        osc2Gain.gain.setValueAtTime(0.4, time);
+        osc2Gain.gain.exponentialRampToValueAtTime(0.01, time + 1.2);
+
+        // Master Amp Envelope (ADSR)
+        const masterGain = this.audioContext.createGain();
+        masterGain.gain.setValueAtTime(0, time);
+        masterGain.gain.linearRampToValueAtTime(0.8, time + 0.02); // Attack
+        masterGain.gain.exponentialRampToValueAtTime(0.4, time + 0.1); // Decay to Sustain level
+        masterGain.gain.exponentialRampToValueAtTime(0.001, time + Math.max(0.5, event.duration)); // Release/Tail
+
+        // Reduce volume for high notes to prevent harshness, boost low notes
+        // Simple scaling: C4 (261Hz) = 1.0. 
+        // Logic: Lower gain slightly as pitch increases.
+        // const velocity = 1.0; 
+
+        // Connections
+        // Osc1 -> Filter -> Osc1Gain -> MasterGain
+        osc1.connect(filter);
+        filter.connect(osc1Gain);
+        osc1Gain.connect(masterGain);
+
+        // Osc2 -> Osc2Gain -> MasterGain (Bypass filter for strong fundamental)
+        osc2.connect(osc2Gain);
+        osc2Gain.connect(masterGain);
+
+        masterGain.connect(this.audioContext.destination);
+
+        // Start/Stop
+        osc1.start(time);
+        osc2.start(time);
+
+        // Stop logic: Stop slightly after release to ensure silence
+        const stopTime = time + Math.max(0.5, event.duration) + 0.2;
+        osc1.stop(stopTime);
+        osc2.stop(stopTime);
+
+        // Cleanup (Garbage collection aid, though AC handles it usually)
+        osc1.onended = () => { masterGain.disconnect(); };
     }
 
     // Temporary test method
