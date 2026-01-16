@@ -18,10 +18,16 @@ export class OpenSheetMusicDisplay {
         }
         this.drawer = new VexFlowMusicSheetDrawer(this.container);
         this.cursor = new Cursor(this.container, this, options);
+
+        // Interaction: Click to Set Cursor
+        this.container.addEventListener("click", (event) => {
+            this.handleMouseClick(event);
+        });
     }
 
     private container: HTMLElement;
     private drawer: VexFlowMusicSheetDrawer;
+    private measureBounds: Map<number, { topY: number, botY: number }> | undefined;
     private sheet: MusicSheet | undefined;
     private graphicalSheet: GraphicalMusicSheet | undefined;
     private isDarkMode: boolean = false;
@@ -115,11 +121,11 @@ export class OpenSheetMusicDisplay {
         const { systems, curves, noteMap, metadata, partGroups } = VexFlowMusicSheetCalculator.format(this.graphicalSheet, this.sheet, effectiveWidth - 20);
 
         // Draw returns measureBounds now
-        const measureBounds = this.drawer.draw({ systems, curves, partGroups, metadata }, { darkMode: this.isDarkMode, zoom: this.zoom });
+        this.measureBounds = this.drawer.draw({ systems, curves, partGroups, metadata }, { darkMode: this.isDarkMode, zoom: this.zoom });
 
         // Initialize Cursor with Sheet logic, Graphic map, and Layout bounds
         // Note: Cursor needs new noteMap and bounds
-        this.cursor.init(this.sheet, noteMap, measureBounds);
+        this.cursor.init(this.sheet, noteMap, this.measureBounds);
 
         // Restore cursor state
         if (!cursorHidden) {
@@ -129,6 +135,46 @@ export class OpenSheetMusicDisplay {
             this.cursor.hide();
         }
     }
+
+    /**
+     * Handle mouse click events on the container.
+     * Maps the click coordinates to a measure index and sets the cursor.
+     */
+    private handleMouseClick(event: MouseEvent): void {
+        console.log("OSMD.handleMouseClick triggered");
+        if (!this.cursor) {
+            console.warn("Cursor is null");
+            return;
+        }
+        if (!this.measureBounds) {
+            console.warn("measureBounds is null/undefined");
+            return;
+        }
+
+        const rect = this.container.getBoundingClientRect();
+        const x = (event.clientX - rect.left) / this.zoom;
+        const y = (event.clientY - rect.top) / this.zoom;
+
+        console.log(`Click at Y=${y}, X=${x} (Zoom: ${this.zoom})`);
+        console.log(`MeasureBounds sizeRef: ${this.measureBounds.size}`);
+
+        // Iterate through known measure bounds to find the clicked measure
+        for (const [measureIndex, bounds] of this.measureBounds.entries()) {
+            // console.log(`Checking M${measureIndex}: [${bounds.topY}, ${bounds.botY}]`);
+            if (y >= bounds.topY && y <= bounds.botY) {
+                console.log(`Clicked Measure Index: ${measureIndex}`);
+
+                // We need to implement setMeasure in Cursor or manually iterate
+                if ((this.cursor as any).setMeasure) {
+                    (this.cursor as any).setMeasure(measureIndex);
+                } else {
+                    console.warn("Cursor.setMeasure not implemented yet");
+                }
+                return;
+            }
+        }
+    }
+
 }
 
 export { CursorType };

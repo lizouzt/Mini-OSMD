@@ -90,8 +90,50 @@ export class VexFlowMusicSheetDrawer {
 
             // 2. Determine System Height
             let maxSystemBottom = 0;
+            let systemDist = 80; // Default system distance
 
-            x = startX;
+            const firstMeasure = system[0];
+            let currentStartX = startX;
+
+            // Check for Page Break & Page Layout
+            if (firstMeasure) {
+                // Check attributes from first staff of first measure
+                const firstStaff = firstMeasure.staves[0];
+
+                // Handle Page Break
+                if (sysIdx > 0 && firstStaff.printNewPage) { // Only break if not first system
+                    y += 80; // Extra gap
+
+                    // Draw Visual Separator
+                    this.ctx.save();
+                    this.ctx.setStrokeStyle("#dddddd");
+                    this.ctx.setLineWidth(2);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(20, y - 40);
+                    this.ctx.lineTo(this.container.clientWidth - 20, y - 40);
+                    this.ctx.stroke();
+
+                    // Draw "Page X" label?
+                    // this.ctx.fillText("Page ...", 20, y - 50);
+
+                    this.ctx.restore();
+                }
+
+                // Handle Page Margins
+                if (firstStaff.pageLayout && firstStaff.pageLayout.margins) {
+                    if (firstStaff.pageLayout.margins.left !== undefined) {
+                        currentStartX = firstStaff.pageLayout.margins.left;
+                    }
+                }
+
+                // Handle System Logic
+                if (firstMeasure.systemDistance !== undefined) systemDist = firstMeasure.systemDistance;
+                if (sysIdx === 0 && firstMeasure.topSystemDistance !== undefined) {
+                    if (this.ctx.element) this.ctx.element.style.marginTop = `${firstMeasure.topSystemDistance}px`;
+                }
+            }
+
+            x = currentStartX;
 
             // 3. Draw Measures
             for (const measureData of system) {
@@ -371,6 +413,23 @@ export class VexFlowMusicSheetDrawer {
         for (let i = 0; i < numStaves - 1; i++) {
             let maxOverlap = 60; // Default minimum distance (e.g. 6 lines)
 
+            // Check for explicit staff distance (from first measure of system)
+            // Note: Currently we don't pass system-level config easily to this function unless we look at measures.
+            // Let's check the first measure for staff-distance
+            const firstMeasure = system[0];
+            if (firstMeasure && firstMeasure.staffDistance !== undefined) {
+                // Use XML staff-distance (converted approx 1/10th of unit? No, XML is usually tenths. VexFlow is pixels.)
+                // Mini-OSMD assumes 10px = 1 half-space? 
+                // Standard: 10px ~ 10 tenths? No. 
+                // Let's assume input is purely purely proportional for now or use raw value if reasonable.
+                // In MusicXML, default spacing is around 65-80.
+                // If we receive "65", that's 65 tenths = 6.5 spaces. 
+                // VexFlow Stave space is 10px. 
+                // So 6.5 spaces * 10 = 65px. 
+                // So we can use the value almost directly if we assume tenths.
+                maxOverlap = Math.max(maxOverlap, firstMeasure.staffDistance);
+            }
+
             for (const measure of system) {
                 const upperStaff = measure.staves[i];
                 const lowerStaff = measure.staves[i + 1];
@@ -553,8 +612,9 @@ export class VexFlowMusicSheetDrawer {
                         if ((curve as any).position === VF.TextBracket.Position.BOTTOM) isBelow = true;
                         height = 20;
                     }
-                    else if (curve instanceof VF.Curve) {
-                        if ((curve.render_options as any)?.invert === true) isBelow = true;
+                    else if ((anyCurve as any).render_options) {
+                        if ((anyCurve as any).render_options.invert) isBelow = true;
+                        // Fix for property access
                         height = 15;
                     }
                     else if (curve instanceof VF.StaveTie) {

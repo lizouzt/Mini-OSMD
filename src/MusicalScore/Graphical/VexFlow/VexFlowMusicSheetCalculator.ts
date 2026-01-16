@@ -591,6 +591,15 @@ export class VexFlowMusicSheetCalculator {
                     voltaType: s === 0 ? voltaType : VF.Volta.type.NONE,
                     voltaNumber: s === 0 ? measure.endingNumber : "",
                     label: measure.measureNumber === 1 ? staffInstrumentLabels[s] : undefined,
+
+                    // Layout Distances (Pass through from SourceMeasure)
+                    systemDistance: measure.systemDistance,
+                    staffDistance: measure.staffDistance,
+                    topSystemDistance: measure.topSystemDistance,
+
+                    // Page Layout
+                    printNewPage: measure.printNewPage,
+                    pageLayout: measure.pageLayout
                 });
             }
 
@@ -623,8 +632,8 @@ export class VexFlowMusicSheetCalculator {
         // --- PASS 2: System Building & Justification ---
         for (const data of preparedMeasures) {
             // Check for Explicit System/Page Break
-            // Mini-OSMD: Ignore explicit XML breaks to ensure responsive layout on web
-            const forceBreak = false; // (data.printNewSystem || data.printNewPage) && currentSystem.length > 0;
+            // Support explicit XML breaks for v0.3.0
+            const forceBreak = (data.printNewSystem || data.printNewPage) && currentSystem.length > 0;
 
             // Check for Width Overflow
             const widthOverflow = currentSystemWidth + data.minWidth > containerWidth && currentSystem.length > 0;
@@ -744,34 +753,68 @@ export class VexFlowMusicSheetCalculator {
 
                         if (sysStartData && sysEndData) {
                             // console.log(`Split Slur: Sys ${sysStart} -> Sys ${sysEnd}`);
+                            // Determine Invert based on Stem Direction
+                            // Default (invert=false) is usually Above (Arc Up).
+                            // If Stems are UP (1), we want Slur BELOW (invert=true).
+                            // If Stems are DOWN (-1), we want Slur ABOVE (invert=false).
+
+                            let invert = false;
+                            try {
+                                const stem1 = vfStart.getStemDirection();
+                                const stem2 = vfEnd.getStemDirection();
+                                if (stem1 === VF.Stem.UP) invert = true;
+                            } catch (e) {
+                                // Fallback to Octave
+                                invert = slur.startNote.pitch.octave >= 5;
+                            }
+
                             const curve1 = new VF.Curve(vfStart, sysStartData.last, {
                                 thickness: 2,
                                 xShift: 0,
                                 yShift: 10,
-                                invert: slur.startNote.pitch.octave >= 5
+                                invert: 1 ? invert : false // Force usage?
                             });
-                            curves.push(curve1);
-                            addToSystem(sysStart, curve1, [startStaffIdx]);
+                            // Fix: VF.Curve constructor signature might vary. 
+                            // We are using options object.
+                            // Re-instantiate properly.
 
-                            const curve2 = new VF.Curve(sysEndData.first, vfEnd, {
+                            const curve1_new = new VF.Curve(vfStart, sysStartData.last, {
                                 thickness: 2,
                                 xShift: 0,
                                 yShift: 10,
-                                invert: slur.endNote.pitch.octave >= 5
+                                invert: invert
                             });
-                            curves.push(curve2);
-                            addToSystem(sysEnd, curve2, [endStaffIdx]);
+
+                            curves.push(curve1_new);
+                            addToSystem(sysStart, curve1_new, [startStaffIdx]);
+
+                            const curve2_new = new VF.Curve(sysEndData.first, vfEnd, {
+                                thickness: 2,
+                                xShift: 0,
+                                yShift: 10,
+                                invert: invert
+                            });
+                            curves.push(curve2_new);
+                            addToSystem(sysEnd, curve2_new, [endStaffIdx]);
                         } else {
                             // Fallback if system boundary notes not found (should be rare)
                             console.warn("Cross-system slur missing boundary notes, skipping to avoid diagonal.");
                         }
                     } else {
                         // Normal Single Curve
+                        let invert = false;
+                        try {
+                            const stem1 = vfStart.getStemDirection();
+                            if (stem1 === VF.Stem.UP) invert = true; // Stem Up -> Slur Below
+                        } catch (e) {
+                            invert = slur.startNote.pitch.octave >= 5;
+                        }
+
                         const curve = new VF.Curve(vfStart, vfEnd, {
                             thickness: 2,
                             xShift: 0,
                             yShift: 10,
-                            invert: slur.startNote.pitch.octave >= 5
+                            invert: invert
                         });
                         curves.push(curve);
 

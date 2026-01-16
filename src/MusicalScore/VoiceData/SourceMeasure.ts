@@ -41,6 +41,24 @@ export class SourceMeasure {
     public printNewSystem: boolean = false;
     public printNewPage: boolean = false;
 
+    // Layout Distances (from MusicXML <system-layout>)
+    public systemDistance: number | undefined = undefined;
+    public staffDistance: number | undefined = undefined;
+    public topSystemDistance: number | undefined = undefined;
+
+    // Page Layout (from <print><page-layout>)
+    // If present, these override global defaults for this page (or start of this page)
+    public pageLayout: {
+        width: number | undefined;
+        height: number | undefined;
+        margins: {
+            left: number | undefined;
+            right: number | undefined;
+            top: number | undefined;
+            bottom: number | undefined;
+        } | undefined;
+    } | undefined;
+
     public addNote(note: Note): void {
         this.notes.push(note);
     }

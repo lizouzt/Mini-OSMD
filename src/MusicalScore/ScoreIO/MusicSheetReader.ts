@@ -252,6 +252,58 @@ export class MusicSheetReader {
                     console.log(`Measure ${measureNumber} print: newSystem=${newSystem}`);
                     if (newSystem === "yes") measure.printNewSystem = true;
                     if (newPage === "yes") measure.printNewPage = true;
+
+                    // Parse system-layout
+                    const sysLayout = print.getElementsByTagName("system-layout")[0];
+                    if (sysLayout) {
+                        const systemDist = sysLayout.getElementsByTagName("system-distance")[0];
+                        if (systemDist) {
+                            measure.systemDistance = parseFloat(systemDist.textContent || "0");
+                        }
+                        const topSystemDist = sysLayout.getElementsByTagName("top-system-distance")[0];
+                        if (topSystemDist) {
+                            measure.topSystemDistance = parseFloat(topSystemDist.textContent || "0");
+                        }
+                    }
+
+                    // Parse staff-layout (Staff Distance)
+                    // Note: MusicXML allows multiple staff-layout elements (per staff).
+                    // We will just read the first one for now as a global override or primary distance.
+                    const staffLayout = print.getElementsByTagName("staff-layout")[0];
+                    if (staffLayout) {
+                        const staffDist = staffLayout.getElementsByTagName("staff-distance")[0];
+                        if (staffDist) {
+                            measure.staffDistance = parseFloat(staffDist.textContent || "0");
+                        }
+                    }
+
+                    // Parse page-layout
+                    const pageLayout = print.getElementsByTagName("page-layout")[0];
+                    if (pageLayout) {
+                        const ph = pageLayout.getElementsByTagName("page-height")[0]?.textContent;
+                        const pw = pageLayout.getElementsByTagName("page-width")[0]?.textContent;
+
+                        measure.pageLayout = {
+                            height: ph ? parseFloat(ph) : undefined,
+                            width: pw ? parseFloat(pw) : undefined,
+                            margins: undefined
+                        };
+
+                        const margins = pageLayout.getElementsByTagName("page-margins")[0];
+                        if (margins) {
+                            const left = margins.getElementsByTagName("left-margin")[0]?.textContent;
+                            const right = margins.getElementsByTagName("right-margin")[0]?.textContent;
+                            const top = margins.getElementsByTagName("top-margin")[0]?.textContent;
+                            const bottom = margins.getElementsByTagName("bottom-margin")[0]?.textContent;
+
+                            measure.pageLayout.margins = {
+                                left: left ? parseFloat(left) : undefined,
+                                right: right ? parseFloat(right) : undefined,
+                                top: top ? parseFloat(top) : undefined,
+                                bottom: bottom ? parseFloat(bottom) : undefined
+                            };
+                        }
+                    }
                 }
 
                 // Parse BarLines
@@ -446,6 +498,16 @@ export class MusicSheetReader {
                                     if (arts.getElementsByTagName("tenuto").length > 0) note.articulations.push("tenuto");
                                 }
                                 if (notations.getElementsByTagName("fermata").length > 0) note.articulations.push("fermata");
+
+                                // Ornaments
+                                const ornaments = notations.getElementsByTagName("ornaments")[0];
+                                if (ornaments) {
+                                    if (ornaments.getElementsByTagName("trill-mark").length > 0) note.ornaments.push("trill");
+                                    if (ornaments.getElementsByTagName("turn").length > 0) note.ornaments.push("turn");
+                                    if (ornaments.getElementsByTagName("inverted-turn").length > 0) note.ornaments.push("inverted-turn");
+                                    if (ornaments.getElementsByTagName("mordent").length > 0) note.ornaments.push("mordent");
+                                    if (ornaments.getElementsByTagName("inverted-mordent").length > 0) note.ornaments.push("inverted-mordent");
+                                }
                             }
 
                             const lyrics = child.getElementsByTagName("lyric");

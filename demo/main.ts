@@ -17,6 +17,10 @@ import multirestUrl from '/demo/Test_Auto_Multirest_2.musicxml?url';
 import slursUrl from '/demo/test_slurs_highNotes.musicxml?url';
 // @ts-ignore
 import functionTestUrl from '/demo/OSMD_function_test_all.xml?url';
+// @ts-ignore
+import layoutTestUrl from "./layout_test.musicxml?url";
+import pageLayoutTestUrl from "./layout_page_test.musicxml?url";
+import ornamentsTestUrl from "./ornaments_test.musicxml?url";
 
 const builtInXML = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
@@ -105,6 +109,10 @@ if (container && selectElement) {
 
     const scores = [
         { name: "Built-in Test (Ultimate)", value: "builtin", url: "" },
+        { name: "Chord Symbols Test", value: "chords", url: "/demo/chords.musicxml?url" },
+        { name: "Layout Engine Test (System Break)", value: "layout_test", url: layoutTestUrl },
+        { name: "Multi-Page Layout Test", value: "page_layout_test", url: pageLayoutTestUrl },
+        { name: "Ornaments Test", value: "ornaments_test", url: ornamentsTestUrl },
         { name: "Beethoven: An die ferne Geliebte", value: "beethoven", url: beethovenUrl },
         { name: "Brahms: Wie Melodien zieht es mir", value: "brahms", url: brahmsUrl },
         { name: "Debussy: Mandoline", value: "debussy", url: debussyUrl },

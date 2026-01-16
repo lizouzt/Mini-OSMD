@@ -37,6 +37,7 @@ export class Note {
     public accidentalXml?: string; // e.g. "natural", "sharp", "flat"
     public stemDirectionXml?: string; // "up" | "down" | "double" | "none"
     public beams: string[] = []; // "begin", "continue", "end", "forward-hook", "backward-hook"
+    public ornaments: string[] = []; // e.g. "trill", "turn", "mordent"
     public printObject: boolean = true; // Default to true
 
     constructor(pitch: Pitch, length: Fraction, durationType: string = "quarter", voiceId: string = "1", timestamp: Fraction = new Fraction(0, 1), staffId: number = 1) {

@@ -17,7 +17,7 @@ export class Cursor {
     constructor(container: HTMLElement, osmd: OpenSheetMusicDisplay, options: Partial<CursorOptions> = {}) {
         this.container = container;
         this.osmd = osmd;
-        
+
         this.options = {
             type: CursorType.CurrentArea,
             color: "#33e02f",
@@ -35,9 +35,9 @@ export class Cursor {
         this.cursorElement.style.zIndex = "1000";
         this.cursorElement.style.pointerEvents = "none";
         this.cursorElement.style.display = "none";
-        
+
         this.updateStyle();
-        
+
         this.container.appendChild(this.cursorElement);
     }
 
@@ -45,9 +45,9 @@ export class Cursor {
     private cursorElement: HTMLElement;
     private osmd: OpenSheetMusicDisplay;
     private options: CursorOptions;
-    
+
     private sheet: MusicSheet | undefined;
-    private noteMap: Map<any, any> | undefined; 
+    private noteMap: Map<any, any> | undefined;
     private measureBounds: Map<number, { topY: number, botY: number }> | undefined;
 
     // Ordered steps for playback
@@ -74,16 +74,16 @@ export class Cursor {
         this.noteMap = noteMap;
         this.measureBounds = measureBounds;
         this.steps = [];
-        
+
         // 1. Collect notes by Timestamp + Measure
         // We use a Map<string, Note[]> where key is "MeasureIndex_Timestamp" to grouping.
         const groupMap = new Map<string, { measureIndex: number, ts: number, notes: any[] }>();
-        
+
         this.sheet.sourceMeasures.forEach((measure, mIndex) => {
             measure.notes.forEach(note => {
                 const ts = note.timestamp.RealValue;
                 const key = `${mIndex}_${ts.toFixed(4)}`; // Basic grouping by measure & time
-                
+
                 if (!groupMap.has(key)) {
                     groupMap.set(key, { measureIndex: mIndex, ts: ts, notes: [] });
                 }
@@ -93,11 +93,11 @@ export class Cursor {
 
         // 2. Convert to list and Calculate Visual X
         const tempSteps: { timestamp: number, notes: any[], measureIndex: number, x: number }[] = [];
-        
+
         groupMap.forEach(group => {
             let minX = Number.MAX_VALUE;
             let hasVisual = false;
-            
+
             group.notes.forEach(note => {
                 const vfNote = this.noteMap!.get(note);
                 if (vfNote) {
@@ -109,7 +109,7 @@ export class Cursor {
                     }
                 }
             });
-            
+
             if (hasVisual) {
                 tempSteps.push({
                     timestamp: group.ts,
@@ -131,7 +131,7 @@ export class Cursor {
         // If two steps have very close X (e.g. < 2px), merge them?
         // Or strictly strictly sequential.
         // Let's keep them separate steps for now unless X is identical.
-        
+
         this.steps = tempSteps;
         this.currentIndex = 0;
         this.hide();
@@ -165,6 +165,19 @@ export class Cursor {
         this.update();
     }
 
+    public setMeasure(measureIndex: number) {
+        // Find the first step that belongs to this measure
+        const stepIndex = this.steps.findIndex(s => s.measureIndex === measureIndex);
+        if (stepIndex !== -1) {
+            this.currentIndex = stepIndex;
+            this.update();
+        } else {
+            // Maybe exact measure has no notes? (Rest measure)
+            // Try to find the closest following step?
+            // For now, simple match.
+        }
+    }
+
     public setOptions(options: Partial<CursorOptions>) {
         this.options = { ...this.options, ...options };
         this.updateStyle();
@@ -173,14 +186,14 @@ export class Cursor {
 
     private updateStyle() {
         if (this.options.type === CursorType.ThinLeft) {
-             this.cursorElement.style.background = this.options.color;
-             this.cursorElement.style.opacity = "1";
-             this.cursorElement.style.boxShadow = "none"; // Remove shadow to prevent visual overshoot
+            this.cursorElement.style.background = this.options.color;
+            this.cursorElement.style.opacity = "1";
+            this.cursorElement.style.boxShadow = "none"; // Remove shadow to prevent visual overshoot
         } else {
-             const c = this.hexToRgb(this.options.color);
-             this.cursorElement.style.background = `rgba(${c.r}, ${c.g}, ${c.b}, ${this.options.alpha})`;
-             this.cursorElement.style.boxShadow = "none";
-             this.cursorElement.style.opacity = "1";
+            const c = this.hexToRgb(this.options.color);
+            this.cursorElement.style.background = `rgba(${c.r}, ${c.g}, ${c.b}, ${this.options.alpha})`;
+            this.cursorElement.style.boxShadow = "none";
+            this.cursorElement.style.opacity = "1";
         }
     }
 
@@ -195,7 +208,7 @@ export class Cursor {
 
     public update() {
         if (this.steps.length === 0 || !this.sheet || !this.noteMap || !this.measureBounds) return;
-        
+
         const step = this.steps[this.currentIndex];
         const zoom = this.osmd.zoom;
 
