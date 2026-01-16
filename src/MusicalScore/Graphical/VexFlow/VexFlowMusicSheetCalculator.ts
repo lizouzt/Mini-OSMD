@@ -403,6 +403,10 @@ export class VexFlowMusicSheetCalculator {
                                 numNotes: logicalTuplet.actualNotes,
                                 notesOccupied: logicalTuplet.normalNotes
                             });
+
+                            // Validated bracket usage
+                            const bracketed = logicalTuplet.bracket !== false; // Default true
+                            vfTuplet.setBracketed(bracketed);
                             staffTuplets[s].push(vfTuplet);
                         }
                         processedTuplets.add(logicalTuplet);

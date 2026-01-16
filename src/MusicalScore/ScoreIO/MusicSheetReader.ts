@@ -441,6 +441,8 @@ export class MusicSheetReader {
 
                             // Notations
                             const notations = child.getElementsByTagName("notations")[0];
+                            let tupletProcessed = false;
+
                             if (notations) {
                                 // Slurs
                                 const slurs = notations.getElementsByTagName("slur");
@@ -474,21 +476,38 @@ export class MusicSheetReader {
                                         if (tie) { tie.endNote = note; note.tieEnds.push(tie); delete openTies[num]; }
                                     }
                                 }
+
                                 // Tuplets
                                 const tuplet = notations.getElementsByTagName("tuplet")[0];
                                 if (tuplet) {
                                     if (tuplet.getAttribute("type") === "start") {
                                         const tm = child.getElementsByTagName("time-modification")[0];
-                                        activeTuplet = new Tuplet(
-                                            parseInt(tm?.getElementsByTagName("actual-notes")[0]?.textContent || "3"),
-                                            parseInt(tm?.getElementsByTagName("normal-notes")[0]?.textContent || "2")
-                                        );
+                                        if (tm) {
+                                            activeTuplet = new Tuplet(
+                                                parseInt(tm.getElementsByTagName("actual-notes")[0]?.textContent || "3"),
+                                                parseInt(tm.getElementsByTagName("normal-notes")[0]?.textContent || "2")
+                                            );
+                                            // Parse Attributes
+                                            const bracketAttr = tuplet.getAttribute("bracket");
+                                            if (bracketAttr === "yes") activeTuplet.bracket = true;
+                                            else if (bracketAttr === "no") activeTuplet.bracket = false;
+
+                                            const showNumberAttr = tuplet.getAttribute("show-number");
+                                            if (showNumberAttr === "none") activeTuplet.showNumber = false;
+                                        }
                                     }
-                                    if (activeTuplet) { note.tuplet = activeTuplet; activeTuplet.notes.push(note); }
-                                    if (tuplet.getAttribute("type") === "stop") activeTuplet = undefined;
-                                } else if (activeTuplet) {
-                                    note.tuplet = activeTuplet; activeTuplet.notes.push(note);
+
+                                    if (activeTuplet) {
+                                        note.tuplet = activeTuplet;
+                                        activeTuplet.notes.push(note);
+                                        tupletProcessed = true;
+                                    }
+
+                                    if (tuplet.getAttribute("type") === "stop") {
+                                        activeTuplet = undefined;
+                                    }
                                 }
+
                                 // Articulations
                                 const arts = notations.getElementsByTagName("articulations")[0];
                                 if (arts) {
@@ -508,6 +527,12 @@ export class MusicSheetReader {
                                     if (ornaments.getElementsByTagName("mordent").length > 0) note.ornaments.push("mordent");
                                     if (ornaments.getElementsByTagName("inverted-mordent").length > 0) note.ornaments.push("inverted-mordent");
                                 }
+                            } // End of Notations
+
+                            // Fallback for Tuplet: If activeTuplet exists but this note had no tuplet tag (or no notations tag)
+                            if (activeTuplet && !tupletProcessed) {
+                                note.tuplet = activeTuplet;
+                                activeTuplet.notes.push(note);
                             }
 
                             const lyrics = child.getElementsByTagName("lyric");

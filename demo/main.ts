@@ -21,6 +21,10 @@ import functionTestUrl from '/demo/OSMD_function_test_all.xml?url';
 import layoutTestUrl from "./layout_test.musicxml?url";
 import pageLayoutTestUrl from "./layout_page_test.musicxml?url";
 import ornamentsTestUrl from "./ornaments_test.musicxml?url";
+import tupletsTestUrl from "./tuplets_test.musicxml?url";
+import repeatsTestUrl from "./repeats_test.musicxml?url";
+import lyricsTestUrl from "./lyrics_test.musicxml?url";
+import multivoiceTestUrl from "./multivoice_test.musicxml?url";
 
 const builtInXML = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
@@ -109,10 +113,14 @@ if (container && selectElement) {
 
     const scores = [
         { name: "Built-in Test (Ultimate)", value: "builtin", url: "" },
-        { name: "Chord Symbols Test", value: "chords", url: "/demo/chords.musicxml?url" },
+        { name: "Chord Symbols Test", value: "chords", url: "/demo/chords_test.musicxml?url" },
         { name: "Layout Engine Test (System Break)", value: "layout_test", url: layoutTestUrl },
         { name: "Multi-Page Layout Test", value: "page_layout_test", url: pageLayoutTestUrl },
         { name: "Ornaments Test", value: "ornaments_test", url: ornamentsTestUrl },
+        { name: "Tuplets Test", value: "tuplets_test", url: tupletsTestUrl },
+        { name: "Repeats Test", value: "repeats_test", url: repeatsTestUrl },
+        { name: "Lyrics Test", value: "lyrics_test", url: lyricsTestUrl },
+        { name: "Multi-Voice Test", value: "multivoice_test", url: multivoiceTestUrl },
         { name: "Beethoven: An die ferne Geliebte", value: "beethoven", url: beethovenUrl },
         { name: "Brahms: Wie Melodien zieht es mir", value: "brahms", url: brahmsUrl },
         { name: "Debussy: Mandoline", value: "debussy", url: debussyUrl },
