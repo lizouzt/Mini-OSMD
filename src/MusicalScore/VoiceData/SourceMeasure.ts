@@ -2,6 +2,7 @@ import { Note } from "./Note";
 import { ClefInstruction } from "./Instructions/ClefInstruction";
 import { KeyInstruction } from "./Instructions/KeyInstruction";
 import { RhythmInstruction } from "./Instructions/RhythmInstruction";
+import { Fraction } from "../../Common/DataObjects/Fraction";
 
 export enum BarLineType {
     Single = 0,
@@ -58,6 +59,8 @@ export class SourceMeasure {
             bottom: number | undefined;
         } | undefined;
     } | undefined;
+
+    public tempos: { timestamp: Fraction, bpm: number }[] = [];
 
     public addNote(note: Note): void {
         this.notes.push(note);

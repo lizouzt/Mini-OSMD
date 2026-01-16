@@ -178,6 +178,10 @@ if (container && selectElement) {
             }
 
             osmd.render();
+            // Load audio score
+            if (osmd.Sheet) {
+                osmd.AudioPlayer.loadScore(osmd.Sheet);
+            }
         } catch (e) {
             console.error("Error loading score:", e);
         }

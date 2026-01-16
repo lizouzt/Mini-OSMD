@@ -409,6 +409,18 @@ export class MusicSheetReader {
                                 }
                             }
                         }
+
+                        // Parse <sound tempo="..."> (Direct child of direction)
+                        const sound = child.getElementsByTagName("sound")[0];
+                        if (sound) {
+                            const tempoAttr = sound.getAttribute("tempo");
+                            if (tempoAttr) {
+                                const bpm = parseFloat(tempoAttr);
+                                if (!isNaN(bpm)) {
+                                    measure.tempos.push({ timestamp: lastNoteTimestamp.clone(), bpm: bpm });
+                                }
+                            }
+                        }
                     } else if (child.tagName === "note") {
                         const isChord = child.getElementsByTagName("chord").length > 0;
                         const isGrace = child.getElementsByTagName("grace").length > 0;
