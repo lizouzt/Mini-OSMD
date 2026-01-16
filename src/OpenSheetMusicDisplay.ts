@@ -6,6 +6,7 @@ import { MusicSheet } from "./MusicalScore/MusicSheet";
 import { MXLHelper } from "./Common/FileIO/MXLHelper";
 import { Cursor, CursorType } from "./OpenSheetMusicDisplay/Cursor";
 import type { CursorOptions } from "./OpenSheetMusicDisplay/Cursor";
+import { AudioPlayer } from "./Playback/AudioPlayer";
 
 export class OpenSheetMusicDisplay {
     constructor(container: string | HTMLElement, options: Partial<CursorOptions> = {}) {
@@ -18,6 +19,7 @@ export class OpenSheetMusicDisplay {
         }
         this.drawer = new VexFlowMusicSheetDrawer(this.container);
         this.cursor = new Cursor(this.container, this, options);
+        this.AudioPlayer = new AudioPlayer();
 
         // Interaction: Click to Set Cursor
         this.container.addEventListener("click", (event) => {
@@ -34,6 +36,7 @@ export class OpenSheetMusicDisplay {
     private _zoom: number = 1.0;
 
     public cursor: Cursor;
+    public AudioPlayer: AudioPlayer;
 
     public get Sheet(): MusicSheet | undefined {
         return this.sheet;

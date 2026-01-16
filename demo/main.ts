@@ -190,15 +190,19 @@ if (container && selectElement) {
         // Internal rendering handles scaling now.
     };
 
-    const togglePlay = () => {
+    const togglePlay = async () => {
         if (playInterval) {
             clearInterval(playInterval);
             playInterval = null;
+            osmd.AudioPlayer.stop();
             if (cursorPlayBtn) cursorPlayBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>`;
         } else {
+            await osmd.AudioPlayer.resume();
+            osmd.AudioPlayer.play();
             playInterval = setInterval(() => {
                 osmd.cursor.next();
-            }, 200); // 200ms per step
+                osmd.AudioPlayer.testSound(); // Beep on each step
+            }, 500); // 500ms per step
             if (cursorPlayBtn) cursorPlayBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
         }
     };
