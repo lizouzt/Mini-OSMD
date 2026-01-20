@@ -29,6 +29,7 @@ export class Note {
 
     public tuplet?: Tuplet;
     public isGrace: boolean = false;
+    public graceSlash: boolean = false;
     public isRest: boolean = false;
     public articulations: string[] = []; // e.g. "staccato", "accent", "fermata"
     public lyrics: Lyric[] = []; // Changed from single lyric

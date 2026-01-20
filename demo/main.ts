@@ -103,6 +103,8 @@ const cursorPlayBtn = document.getElementById("cursor-play-btn");
 const cursorShowBtn = document.getElementById("cursor-show-btn");
 const cursorTypeSelector = document.getElementById("cursor-type-selector") as HTMLSelectElement;
 const darkModeBtn = document.getElementById("dark-mode-btn");
+const exportBtn = document.getElementById("export-img-btn");
+const printBtn = document.getElementById("print-pdf-btn");
 const fileUpload = document.getElementById("file-upload") as HTMLInputElement;
 
 if (container && selectElement) {
@@ -131,6 +133,7 @@ if (container && selectElement) {
         { name: "Test Slurs High Notes", value: "slurs", url: slursUrl },
         { name: "Chord Symbols Test", value: "chords", url: "/demo/chords_test.musicxml?url" },
         { name: "Virtual Rendering Test (100 msrs)", value: "virtual_test", url: "/demo/virtual_test.musicxml?url" },
+        { name: "Grace Notes Test", value: "grace_note_test", url: "/demo/grace_note_test.musicxml?url" },
         { name: "OSMD Function Test All", value: "function_test", url: functionTestUrl }
     ];
 
@@ -293,6 +296,26 @@ if (container && selectElement) {
     }
 
     darkModeBtn?.addEventListener("click", toggleDarkMode);
+
+    exportBtn?.addEventListener("click", async () => {
+        try {
+            const dataUrl = await osmd.exportToImage(2);
+            // Download logic
+            const link = document.createElement("a");
+            link.href = dataUrl;
+            link.download = `osmd_export_${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (e) {
+            console.error("Export failed:", e);
+            alert("Export failed: " + e);
+        }
+    });
+
+    printBtn?.addEventListener("click", () => {
+        osmd.print();
+    });
 
     window.addEventListener("keydown", (e) => {
         if (e.key === "ArrowRight") osmd.cursor.next();

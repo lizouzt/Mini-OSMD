@@ -31,7 +31,7 @@ export class VexFlowMusicSheetCalculator {
         }
     }
 
-    public static format(graphicalSheet: GraphicalMusicSheet, sheet: MusicSheet, containerWidth: number = 1000): { systems: any[][], curves: any[], noteMap: Map<any, any>, partGroups: any[], metadata: { title: string | undefined, composer: string | undefined } } {
+    public static format(graphicalSheet: GraphicalMusicSheet, sheet: MusicSheet, containerWidth: number = 1000): { systems: any[][], curves: any[], noteMap: Map<any, any>, partGroups: any[], metadata: { title: string | undefined, composer: string | undefined }, systemStaffCurves: Map<number, Map<number, any[]>> } {
         const systems: any[][] = [];
         let currentSystem: any[] = [];
         let currentSystemWidth = 0;
@@ -360,8 +360,8 @@ export class VexFlowMusicSheetCalculator {
                                 const gnStep = NoteEnum[gn.pitch.step].toLowerCase();
                                 const gvfNote = new VF.GraceNote({
                                     keys: [`${gnStep}/${gn.pitch.octave}`],
-                                    duration: "8",
-                                    slash: true
+                                    duration: "8", // Can map durationType if needed, but 8 is standard for visual grace
+                                    slash: gn.graceSlash
                                 });
                                 if (gn.pitch.alter !== 0) {
                                     let acc = "";
@@ -415,7 +415,7 @@ export class VexFlowMusicSheetCalculator {
             }
 
             // Calculate Width (Max of all staves)
-            let minWidth = 150;
+            let minWidth = 80; // Lower floor for sparse measures
 
             // 0. Pre-calculate Global Max Ticks for the ENTIRE measure (all staves)
             // This ensures strict alignment across all staves (e.g. Piano Grand Staff)
@@ -634,32 +634,47 @@ export class VexFlowMusicSheetCalculator {
         }
 
         // --- PASS 2: System Building & Justification ---
+
+        // Configuration
+        const minSystemFill = 0.5; // If system is > 50% full, justify it. Else left-align.
+
         for (const data of preparedMeasures) {
             // Check for Explicit System/Page Break
-            // Support explicit XML breaks for v0.3.0
             const forceBreak = (data.printNewSystem || data.printNewPage) && currentSystem.length > 0;
 
             // Check for Width Overflow
-            const widthOverflow = currentSystemWidth + data.minWidth > containerWidth && currentSystem.length > 0;
+            // Add a small buffer/padding per measure to account for bar lines/connectors
+            let potentialWidth = currentSystemWidth + data.minWidth;
+
+            // Heuristic: If we are just starting a line, we accept it even if it's too big (one measure system)
+            const widthOverflow = potentialWidth > containerWidth && currentSystem.length > 0;
 
             if (forceBreak || widthOverflow) {
-                // Push current system
-                // Linear Justification
+                // Determine layout strategy
+                // 1. Calculate available space
                 const totalMinWidth = currentSystemWidth;
-                const extraSpace = containerWidth - totalMinWidth;
+                const availableSpace = containerWidth - totalMinWidth;
 
-                // But for now, simple justification
-                if (currentSystem.length > 0 && extraSpace > 0) {
-                    // Proportional Justification: Distribute extra space based on MinWidth
-                    // This prevents empty/simple measures from stretching too much
+                // 2. Decide to Justify or Left-Align
+                // If it's a forced break but the line is mostly full, we still justify.
+                // If it's a natural overflow, we ALWAYS justify (stretch to fit).
+                let justify = true;
+
+                // Optional: If line is very empty (e.g. last line or forced break with 1 bar), don't stretch too much?
+                // For now, standard music notation behavior is to stretch fully unless it's the very last system of score.
+                // But for forced breaks (e.g. 4-bar phrases), we usually want full stretch.
+
+                if (justify) {
+                    // Distribute space proportionally based on minWidth
+                    // Dense measures (large minWidth) get more absolute space, but proportional increase is fair.
+                    const expansionRatio = availableSpace / totalMinWidth;
+
                     currentSystem.forEach(m => {
-                        const ratio = m.minWidth / totalMinWidth;
-                        m.width = m.minWidth + (extraSpace * ratio);
+                        m.width = m.minWidth + (m.minWidth * expansionRatio);
                     });
                 } else {
                     currentSystem.forEach(m => m.width = m.minWidth);
                 }
-
 
                 systems.push(currentSystem);
                 currentSystem = [];
@@ -671,8 +686,8 @@ export class VexFlowMusicSheetCalculator {
         }
 
         if (currentSystem.length > 0) {
-            // Last system: Don't justify fully? 
-            // Normally last system is ragged right.
+            // Last system: Ragged Right (Do not justify)
+            // Unless it's very close to full? Most editions leave last line ragged.
             currentSystem.forEach(m => m.width = m.minWidth);
             systems.push(currentSystem);
         }

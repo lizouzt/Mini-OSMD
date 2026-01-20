@@ -214,8 +214,67 @@ export class OpenSheetMusicDisplay {
         if (this.resizeTimeout) {
             clearTimeout(this.resizeTimeout);
         }
-        // Potential: Clear container?
-        // this.container.innerHTML = "";
+    }
+
+    /**
+     * Export the current sheet to an Image Data URL (PNG).
+     * @param scale Scaling factor (default 2 for Hi-DPI quality)
+     */
+    public async exportToImage(scale: number = 2): Promise<string> {
+        if (!this.container) throw new Error("No container");
+        const svg = this.container.querySelector("svg");
+        if (!svg) throw new Error("No SVG rendered");
+
+        // Serialize SVG
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svg);
+        const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(svgBlob);
+
+        // Load into backend Image
+        const img = new Image();
+        img.src = url;
+
+        return new Promise((resolve, reject) => {
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                // Use the SVG's logic width/height if set, or getBoundingClientRect
+                const width = parseFloat(svg.getAttribute("width") || "1000");
+                const height = parseFloat(svg.getAttribute("height") || "1000");
+
+                canvas.width = width * scale;
+                canvas.height = height * scale;
+
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    reject(new Error("Canvas context failed"));
+                    return;
+                }
+
+                // Fill white background (transparent by default)
+                ctx.fillStyle = this.isDarkMode ? "#222" : "#FFF";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.scale(scale, scale);
+                ctx.drawImage(img, 0, 0, width, height);
+
+                URL.revokeObjectURL(url);
+                try {
+                    const dataUrl = canvas.toDataURL("image/png");
+                    resolve(dataUrl);
+                } catch (e) {
+                    reject(e);
+                }
+            };
+            img.onerror = (e) => reject(e);
+        });
+    }
+
+    /**
+     * Trigger browser print dialog.
+     */
+    public print(): void {
+        window.print();
     }
 
     /**

@@ -433,6 +433,14 @@ export class MusicSheetReader {
                             note.staffId += globalStaffOffset;
 
                             note.isGrace = isGrace;
+                            if (isGrace) {
+                                const graceTag = child.getElementsByTagName("grace")[0];
+                                if (graceTag) {
+                                    const slash = graceTag.getAttribute("slash");
+                                    note.graceSlash = (slash === "yes");
+                                }
+                            }
+
                             if (pendingDynamics.length > 0 && !isChord) {
                                 note.dynamics.push(...pendingDynamics);
                                 pendingDynamics = [];
