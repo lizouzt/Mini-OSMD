@@ -7,6 +7,9 @@ import { MXLHelper } from "./Common/FileIO/MXLHelper";
 import { Cursor, CursorType } from "./OpenSheetMusicDisplay/Cursor";
 import type { CursorOptions } from "./OpenSheetMusicDisplay/Cursor";
 import { AudioPlayer } from "./Playback/AudioPlayer";
+import { MusicSheetHydrator } from "./Common/Hydration/MusicSheetHydrator";
+// Vite Worker Import
+import MusicSheetParserWorker from "./Worker/MusicSheetParser.worker?worker";
 
 export class OpenSheetMusicDisplay {
     constructor(container: string | HTMLElement, options: Partial<CursorOptions> = {}) {
@@ -20,6 +23,17 @@ export class OpenSheetMusicDisplay {
         this.drawer = new VexFlowMusicSheetDrawer(this.container);
         this.cursor = new Cursor(this.container, this, options);
         this.AudioPlayer = new AudioPlayer();
+
+        // Initialize Worker
+        try {
+            this.parserWorker = new MusicSheetParserWorker();
+            this.parserWorker.onmessage = (e) => {
+                // If we were handling async requests widely, we'd need ID correlation.
+                // For now, load() is a single active operation.
+            };
+        } catch (e) {
+            console.warn("Worker not supported or failed to initialize. Falling back to main thread.", e);
+        }
 
         // Interaction: Click to Set Cursor
         this.container.addEventListener("click", (event) => {
@@ -52,6 +66,8 @@ export class OpenSheetMusicDisplay {
     private isDarkMode: boolean = false;
     private _zoom: number = 1.0;
 
+    private parserWorker: Worker | undefined;
+
     private resizeObserver: ResizeObserver;
     private resizeTimeout: any; // Timer ID
 
@@ -83,6 +99,7 @@ export class OpenSheetMusicDisplay {
 
                 if (typeof content === "string") {
                     if (content.startsWith("PK")) {
+                        // Likely MXL string (binary string), handle if needed
                         xml = content;
                     } else {
                         xml = content;
@@ -91,8 +108,32 @@ export class OpenSheetMusicDisplay {
                     xml = await MXLHelper.MXLtoXML(content);
                 }
 
-                this.sheet = MusicSheetReader.readMusicXML(xml);
-                resolve();
+                if (this.parserWorker) {
+                    // Use Worker
+                    this.parserWorker.onmessage = (e) => {
+                        const { success, data, error } = e.data;
+                        if (success) {
+                            try {
+                                console.time("Hydration");
+                                this.sheet = MusicSheetHydrator.hydrate(data);
+                                console.timeEnd("Hydration");
+                                resolve();
+                            } catch (hError) {
+                                reject(hError);
+                            }
+                        } else {
+                            reject(new Error(error));
+                        }
+                    };
+                    this.parserWorker.onerror = (e) => {
+                        reject(e);
+                    }
+                    this.parserWorker.postMessage({ xml });
+                } else {
+                    // Fallback
+                    this.sheet = MusicSheetReader.readMusicXML(xml);
+                    resolve();
+                }
             } catch (e) {
                 reject(e);
             }

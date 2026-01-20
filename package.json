@@ -29,6 +29,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@xmldom/xmldom": "^0.8.11",
     "jszip": "^3.10.1"
   }
 }

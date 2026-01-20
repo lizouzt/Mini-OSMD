@@ -339,13 +339,15 @@ export class MusicSheetReader {
                 }
 
                 // Iterate Children
-                const children = xmlMeasure.children;
+                // Note: Use childNodes and filter for Elements to support xmldom (Polyfill)
+                const childNodes = xmlMeasure.childNodes;
                 let lastNoteTimestamp = new Fraction(0, 1);
                 let pendingDynamics: string[] = [];
                 let pendingWords: string[] = [];
 
-                for (let j = 0; j < children.length; j++) {
-                    const child = children[j];
+                for (let j = 0; j < childNodes.length; j++) {
+                    const child = childNodes[j] as Element;
+                    if (child.nodeType !== 1) continue; // Skip non-element nodes (text, comment, etc)
                     if (child.tagName === "harmony") {
                         const rootStepStr = child.getElementsByTagName("root-step")[0]?.textContent;
                         const rootAlterStr = child.getElementsByTagName("root-alter")[0]?.textContent;
@@ -378,7 +380,10 @@ export class MusicSheetReader {
                             // Dynamics
                             const dyns = type.getElementsByTagName("dynamics")[0];
                             if (dyns) {
-                                for (let d = 0; d < dyns.children.length; d++) pendingDynamics.push(dyns.children[d].tagName);
+                                for (let d = 0; d < dyns.childNodes.length; d++) {
+                                    const dynNode = dyns.childNodes[d] as Element;
+                                    if (dynNode.nodeType === 1) pendingDynamics.push(dynNode.tagName);
+                                }
                             }
                             // Words
                             const words = type.getElementsByTagName("words");
