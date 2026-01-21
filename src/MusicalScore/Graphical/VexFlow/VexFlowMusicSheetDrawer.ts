@@ -1,3 +1,4 @@
+import { PartGroup } from "../../MusicSheet";
 import * as VF from "vexflow";
 
 export class VexFlowMusicSheetDrawer {
@@ -394,7 +395,7 @@ export class VexFlowMusicSheetDrawer {
                 // Use vfStave.getX() to be precise
                 if (vfStaves.length > 0 && Math.abs(vfStaves[0].getX() - currentStartX) < 1) {
                     if (partGroups) {
-                        partGroups.forEach(group => {
+                        partGroups.forEach((group: PartGroup) => {
                             const startIdx = group.startStaffId - 1;
                             const endIdx = group.endStaffId - 1;
                             if (startIdx >= 0 && endIdx < vfStaves.length && startIdx <= endIdx) {
@@ -452,7 +453,7 @@ export class VexFlowMusicSheetDrawer {
         if (curves) {
             this.ctx.setStrokeStyle(color);
             this.ctx.setFillStyle(color);
-            curves.forEach(curve => {
+            curves.forEach((curve: any) => {
                 try {
                     curve.setContext(this.ctx).draw();
                 } catch (e) { }

@@ -1,17 +1,42 @@
-import * as a from "vexflow";
-import Q from "jszip";
-class tt {
+import * as h from "vexflow";
+import Bt from "jszip";
+class mt {
+  constructor(t, e, s = 1) {
+    this.id = t, this.name = e, this.numStaves = s;
+  }
+  Transpose = 0;
+  PlaybackTranspose = 0;
+}
+class pt {
+  constructor(t, e, s) {
+    this.startStaffId = t, this.endStaffId = e, this.groupSymbol = s;
+  }
+}
+class dt {
+  Title;
+  Composer;
+  Transpose = 0;
   sourceMeasures = [];
   slurs = [];
   ties = [];
   wedges = [];
   octaveShifts = [];
+  instruments = [];
+  partGroups = [];
   addMeasure(t) {
     this.sourceMeasures.push(t);
   }
+  getInstrumentForStaff(t) {
+    let e = 0;
+    for (const s of this.instruments) {
+      if (t > e && t <= e + s.numStaves)
+        return s;
+      e += s.numStaves;
+    }
+  }
 }
-var Y = /* @__PURE__ */ ((e) => (e[e.Single = 0] = "Single", e[e.Double = 1] = "Double", e[e.End = 2] = "End", e[e.RepeatEnd = 3] = "RepeatEnd", e[e.RepeatBegin = 4] = "RepeatBegin", e))(Y || {}), U = /* @__PURE__ */ ((e) => (e[e.None = 0] = "None", e[e.Start = 1] = "Start", e[e.Stop = 2] = "Stop", e[e.StartStop = 3] = "StartStop", e[e.Discontinue = 4] = "Discontinue", e))(U || {});
-class et {
+var nt = /* @__PURE__ */ ((a) => (a[a.Single = 0] = "Single", a[a.Double = 1] = "Double", a[a.End = 2] = "End", a[a.RepeatEnd = 3] = "RepeatEnd", a[a.RepeatBegin = 4] = "RepeatBegin", a))(nt || {}), ot = /* @__PURE__ */ ((a) => (a[a.None = 0] = "None", a[a.Start = 1] = "Start", a[a.Stop = 2] = "Stop", a[a.StartStop = 3] = "StartStop", a[a.Discontinue = 4] = "Discontinue", a))(ot || {});
+class gt {
   constructor(t) {
     this.measureNumber = t;
   }
@@ -20,40 +45,52 @@ class et {
   clefs = [];
   keys = [];
   rhythms = [];
+  chordSymbols = [];
+  // ChordSymbolContainer[]
   endBarType = 0;
   endingType = 0;
   endingNumber = "";
+  printNewSystem = !1;
+  printNewPage = !1;
+  // Layout Distances (from MusicXML <system-layout>)
+  systemDistance = void 0;
+  staffDistance = void 0;
+  topSystemDistance = void 0;
+  // Page Layout (from <print><page-layout>)
+  // If present, these override global defaults for this page (or start of this page)
+  pageLayout;
+  tempos = [];
   addNote(t) {
     this.notes.push(t);
   }
 }
-class W {
-  constructor(t = 0, r = 1) {
-    this.numerator = t, this.denominator = r;
+class tt {
+  constructor(t = 0, e = 1) {
+    this.numerator = t, this.denominator = e;
   }
   numerator;
   denominator;
   get RealValue() {
     return this.numerator / this.denominator;
   }
-  static Plus(t, r) {
-    return new W(
-      t.numerator * r.denominator + r.numerator * t.denominator,
-      t.denominator * r.denominator
+  static Plus(t, e) {
+    return new tt(
+      t.numerator * e.denominator + e.numerator * t.denominator,
+      t.denominator * e.denominator
     ).simplify();
   }
   simplify() {
-    const t = W.gcd(this.numerator, this.denominator);
+    const t = tt.gcd(this.numerator, this.denominator);
     return this.numerator /= t, this.denominator /= t, this;
   }
-  static gcd(t, r) {
-    return r === 0 ? t : W.gcd(r, t % r);
+  static gcd(t, e) {
+    return e === 0 ? t : tt.gcd(e, t % e);
   }
   clone() {
-    return new W(this.numerator, this.denominator);
+    return new tt(this.numerator, this.denominator);
   }
 }
-class st {
+class yt {
   pitch;
   length;
   /** The duration type string (e.g. "whole", "half", "quarter", "eighth"). */
@@ -70,6 +107,7 @@ class st {
   tieEnds = [];
   tuplet;
   isGrace = !1;
+  graceSlash = !1;
   isRest = !1;
   articulations = [];
   // e.g. "staccato", "accent", "fermata"
@@ -77,14 +115,26 @@ class st {
   // Changed from single lyric
   dynamics = [];
   // e.g. "p", "f", "mf"
-  constructor(t, r, l = "quarter", i = "1", d = new W(0, 1), m = 1) {
-    this.pitch = t, this.length = r, this.durationType = l, this.voiceId = i, this.timestamp = d, this.staffId = m;
+  words = [];
+  // e.g. "Allegro", "crescendo" (text)
+  accidentalXml;
+  // e.g. "natural", "sharp", "flat"
+  stemDirectionXml;
+  // "up" | "down" | "double" | "none"
+  beams = [];
+  // "begin", "continue", "end", "forward-hook", "backward-hook"
+  ornaments = [];
+  // e.g. "trill", "turn", "mordent"
+  printObject = !0;
+  // Default to true
+  constructor(t, e, s = "quarter", n = "1", r = new tt(0, 1), l = 1) {
+    this.pitch = t, this.length = e, this.durationType = s, this.voiceId = n, this.timestamp = r, this.staffId = l;
   }
 }
-var H = /* @__PURE__ */ ((e) => (e[e.C = 0] = "C", e[e.D = 2] = "D", e[e.E = 4] = "E", e[e.F = 5] = "F", e[e.G = 7] = "G", e[e.A = 9] = "A", e[e.B = 11] = "B", e))(H || {});
-class Z {
-  constructor(t, r, l) {
-    this.step = t, this.octave = r, this.alter = l;
+var it = /* @__PURE__ */ ((a) => (a[a.C = 0] = "C", a[a.D = 2] = "D", a[a.E = 4] = "E", a[a.F = 5] = "F", a[a.G = 7] = "G", a[a.A = 9] = "A", a[a.B = 11] = "B", a))(it || {});
+class rt {
+  constructor(t, e, s) {
+    this.step = t, this.octave = e, this.alter = s;
   }
   step;
   octave;
@@ -93,47 +143,102 @@ class Z {
     const t = this.step + this.alter + (this.octave - 4) * 12 - 9;
     return 440 * Math.pow(2, t / 12);
   }
+  static transpose(t, e) {
+    const n = t.step + t.alter + (t.octave + 1) * 12 + e, r = Math.floor(n / 12) - 1;
+    let l = n % 12;
+    l < 0 && (l += 12);
+    let o = 0, u = 0;
+    switch (l) {
+      case 0:
+        o = 0, u = 0;
+        break;
+      case 1:
+        o = 0, u = 1;
+        break;
+      // C#
+      case 2:
+        o = 2, u = 0;
+        break;
+      // D
+      case 3:
+        o = 4, u = -1;
+        break;
+      // Eb (Preference)
+      case 4:
+        o = 4, u = 0;
+        break;
+      case 5:
+        o = 5, u = 0;
+        break;
+      case 6:
+        o = 5, u = 1;
+        break;
+      // F#
+      case 7:
+        o = 7, u = 0;
+        break;
+      case 8:
+        o = 9, u = -1;
+        break;
+      // Ab
+      case 9:
+        o = 9, u = 0;
+        break;
+      case 10:
+        o = 11, u = -1;
+        break;
+      // Bb
+      case 11:
+        o = 11, u = 0;
+        break;
+    }
+    return new rt(o, r, u);
+  }
 }
-var K = /* @__PURE__ */ ((e) => (e[e.G = 0] = "G", e[e.F = 1] = "F", e[e.C = 2] = "C", e[e.PERCUSSION = 3] = "PERCUSSION", e[e.TAB = 4] = "TAB", e))(K || {});
-class nt {
-  constructor(t, r) {
-    this.clefType = t, this.line = r;
+var at = /* @__PURE__ */ ((a) => (a[a.G = 0] = "G", a[a.F = 1] = "F", a[a.C = 2] = "C", a[a.PERCUSSION = 3] = "PERCUSSION", a[a.TAB = 4] = "TAB", a))(at || {});
+class St {
+  constructor(t, e) {
+    this.clefType = t, this.line = e;
   }
   clefType;
   line;
 }
-class ot {
-  constructor(t, r) {
-    this.key = t, this.mode = r;
+class bt {
+  constructor(t, e) {
+    this.key = t, this.mode = e;
   }
   key;
   mode;
 }
-class rt {
-  constructor(t, r) {
-    this.numerator = t, this.denominator = r;
+class Nt {
+  constructor(t, e) {
+    this.numerator = t, this.denominator = e;
   }
   numerator;
   denominator;
 }
-class at {
+class ht {
   startNote;
   endNote;
 }
-class it {
-  constructor(t, r) {
-    this.actualNotes = t, this.normalNotes = r;
+class vt {
+  constructor(t, e) {
+    this.actualNotes = t, this.normalNotes = e;
   }
   actualNotes;
   normalNotes;
   notes = [];
+  bracket = !0;
+  // Default to true (or better: undefined?)
+  showNumber = !0;
+  // Default to true
 }
-class ct {
+class ft {
   startNote;
   endNote;
 }
-var z = /* @__PURE__ */ ((e) => (e[e.Crescendo = 0] = "Crescendo", e[e.Diminuendo = 1] = "Diminuendo", e))(z || {});
-class lt {
+var lt = /* @__PURE__ */ ((a) => (a[a.Crescendo = 0] = "Crescendo", a[a.Diminuendo = 1] = "Diminuendo", a))(lt || {});
+class xt {
   constructor(t) {
     this.type = t;
   }
@@ -141,8 +246,8 @@ class lt {
   startNote;
   endNote;
 }
-var J = /* @__PURE__ */ ((e) => (e[e.Up = 0] = "Up", e[e.Down = 1] = "Down", e))(J || {});
-class ut {
+var ct = /* @__PURE__ */ ((a) => (a[a.Up = 0] = "Up", a[a.Down = 1] = "Down", a))(ct || {});
+class wt {
   constructor(t) {
     this.type = t;
   }
@@ -150,173 +255,358 @@ class ut {
   startNote;
   endNote;
 }
-class ht {
+class Tt {
+  constructor(t, e, s, n, r) {
+    this.root = t, this.kind = e, this.bass = s, this.degrees = n, this.timestamp = r;
+  }
+  // Helper to get VexFlow friendly string (simplified)
+  toString() {
+    return "";
+  }
+}
+class kt {
+  static transpose = 0;
   static readMusicXML(t) {
-    const l = new DOMParser().parseFromString(t, "text/xml"), i = new tt(), d = l.getElementsByTagName("part");
-    let m = 0;
-    for (let h = 0; h < d.length; h++) {
-      const I = d[h].getElementsByTagName("measure");
-      let B = 4, V = 1;
-      const R = {}, n = {};
-      let u, N, E, b = new W(0, 1);
-      for (let O = 0; O < I.length; O++) {
-        const X = I[O], $ = parseInt(X.getAttribute("number") || "0");
-        let C;
-        i.sourceMeasures.length <= O ? (C = new et($), i.addMeasure(C)) : C = i.sourceMeasures[O];
-        const L = X.getElementsByTagName("attributes")[0];
-        if (L) {
-          const p = L.getElementsByTagName("divisions")[0];
-          p && (B = parseInt(p.textContent || "4"));
-          const v = L.getElementsByTagName("staves")[0];
-          if (v) {
-            const o = parseInt(v.textContent || "1");
-            V = Math.max(V, o);
+    const s = new DOMParser().parseFromString(t, "text/xml"), n = new dt(), r = s.getElementsByTagName("work")[0];
+    if (r) {
+      const g = r.getElementsByTagName("work-title")[0]?.textContent;
+      g && (n.Title = g);
+    }
+    const l = s.getElementsByTagName("identification")[0];
+    if (l) {
+      const g = l.getElementsByTagName("creator");
+      for (let k = 0; k < g.length; k++) {
+        const R = g[k];
+        if (R.getAttribute("type") === "composer") {
+          n.Composer = R.textContent || "";
+          break;
+        }
+      }
+    }
+    if (!n.Title || !n.Composer) {
+      const g = s.getElementsByTagName("credit");
+      for (let k = 0; k < g.length; k++) {
+        const R = g[k], I = R.getElementsByTagName("credit-type")[0]?.textContent, V = R.getElementsByTagName("credit-words")[0]?.textContent;
+        V && (!n.Title && (I === "title" || R.getAttribute("page") === "1") && I === "title" && (n.Title = V), !n.Composer && I === "composer" && (n.Composer = V));
+      }
+    }
+    const o = (g) => {
+      const k = g.getElementsByTagName("measure");
+      if (k.length > 0) {
+        const R = k[0].getElementsByTagName("attributes")[0];
+        if (R) {
+          const I = R.getElementsByTagName("staves")[0];
+          if (I) return parseInt(I.textContent || "1");
+        }
+      }
+      return 1;
+    }, u = s.getElementsByTagName("part-list")[0];
+    if (u) {
+      let g = 0;
+      const k = [], R = {}, I = s.getElementsByTagName("part");
+      for (let V = 0; V < I.length; V++) {
+        const C = I[V], v = C.getAttribute("id") || `P${V + 1}`;
+        R[v] = o(C);
+      }
+      for (let V = 0; V < u.childNodes.length; V++) {
+        const C = u.childNodes[V];
+        if (C.nodeName === "part-group") {
+          const v = C.getAttribute("type"), P = C.getAttribute("number") || "1";
+          if (v === "start") {
+            const F = C.getElementsByTagName("group-symbol")[0]?.textContent || "brace";
+            k.push({ number: P, startStaff: g + 1, symbol: F });
+          } else if (v === "stop") {
+            const F = k.findIndex((O) => O.number === P);
+            if (F >= 0) {
+              const O = k[F];
+              n.partGroups.push(new pt(O.startStaff, g, O.symbol)), k.splice(F, 1);
+            }
           }
-          const w = L.getElementsByTagName("clef");
-          for (let o = 0; o < w.length; o++) {
-            const g = w[o], G = parseInt(g.getAttribute("number") || "1"), T = g.getElementsByTagName("sign")[0]?.textContent, D = parseInt(g.getElementsByTagName("line")[0]?.textContent || "0");
-            let y = K.G;
-            T === "F" && (y = K.F), T === "C" && (y = K.C);
-            const P = m + (G - 1);
-            C.clefs[P] = new nt(y, D);
+        } else if (C.nodeName === "score-part") {
+          const v = C.getAttribute("id");
+          v && R[v] ? g += R[v] : g += 1;
+        }
+      }
+    }
+    const x = s.getElementsByTagName("part");
+    let N = 0;
+    for (let g = 0; g < x.length; g++) {
+      const k = x[g], R = k.getAttribute("id") || `P${g + 1}`, I = k.getElementsByTagName("part-name")[0]?.textContent || "", V = k.getElementsByTagName("measure");
+      let C = 4, v = 1;
+      if (V.length > 0) {
+        const w = V[0].getElementsByTagName("attributes")[0];
+        if (w) {
+          const T = w.getElementsByTagName("staves")[0];
+          T && (v = parseInt(T.textContent || "1"));
+        }
+      }
+      const P = new mt(R, I, v);
+      n.instruments.push(P);
+      const F = {}, O = {};
+      let i, p, y, S = new tt(0, 1);
+      for (let w = 0; w < V.length; w++) {
+        const T = V[w], G = parseInt(T.getAttribute("number") || "0");
+        let b;
+        n.sourceMeasures.length <= w ? (b = new gt(G), n.addMeasure(b)) : b = n.sourceMeasures[w];
+        const Y = T.getElementsByTagName("attributes")[0];
+        if (Y) {
+          const E = Y.getElementsByTagName("divisions")[0];
+          E && (C = parseInt(E.textContent || "4"));
+          const c = Y.getElementsByTagName("staves")[0];
+          if (c) {
+            const D = parseInt(c.textContent || "1");
+            v = Math.max(v, D);
           }
-          const x = L.getElementsByTagName("key");
-          for (let o = 0; o < x.length; o++) {
-            const g = x[o], G = parseInt(g.getAttribute("number") || "1"), T = parseInt(g.getElementsByTagName("fifths")[0]?.textContent || "0"), D = g.getElementsByTagName("mode")[0]?.textContent || "major", y = m + (G - 1);
-            C.keys[y] = new ot(T, D);
+          const m = Y.getElementsByTagName("transpose")[0];
+          if (m) {
+            const D = m.getElementsByTagName("chromatic")[0];
+            if (D) {
+              const A = parseInt(D.textContent || "0");
+              P.PlaybackTranspose = A;
+            }
           }
-          const A = L.getElementsByTagName("time");
-          for (let o = 0; o < A.length; o++) {
-            const g = A[o], G = parseInt(g.getAttribute("number") || "1"), T = parseInt(g.getElementsByTagName("beats")[0]?.textContent || "4"), D = parseInt(g.getElementsByTagName("beat-type")[0]?.textContent || "4"), y = m + (G - 1);
-            C.rhythms[y] = new rt(T, D);
+          const M = Y.getElementsByTagName("clef");
+          for (let D = 0; D < M.length; D++) {
+            const A = M[D], z = parseInt(A.getAttribute("number") || "1"), W = A.getElementsByTagName("sign")[0]?.textContent, j = parseInt(A.getElementsByTagName("line")[0]?.textContent || "0");
+            let Z = at.G;
+            W === "F" && (Z = at.F), W === "C" && (Z = at.C);
+            const L = N + (z - 1);
+            b.clefs[L] = new St(Z, j);
+          }
+          const B = Y.getElementsByTagName("key");
+          for (let D = 0; D < B.length; D++) {
+            const A = B[D], z = parseInt(A.getAttribute("number") || "1"), W = parseInt(A.getElementsByTagName("fifths")[0]?.textContent || "0"), j = A.getElementsByTagName("mode")[0]?.textContent || "major", Z = N + (z - 1);
+            b.keys[Z] = new bt(W, j);
+          }
+          const d = Y.getElementsByTagName("time");
+          for (let D = 0; D < d.length; D++) {
+            const A = d[D], z = parseInt(A.getAttribute("number") || "1"), W = parseInt(A.getElementsByTagName("beats")[0]?.textContent || "4"), j = parseInt(A.getElementsByTagName("beat-type")[0]?.textContent || "4"), Z = N + (z - 1);
+            b.rhythms[Z] = new Nt(W, j);
           }
         }
-        const q = X.getElementsByTagName("barline");
-        for (let p = 0; p < q.length; p++) {
-          const v = q[p], w = v.getAttribute("location"), x = v.getElementsByTagName("ending")[0];
-          if (x) {
-            const A = x.getAttribute("number") || "", o = x.getAttribute("type") || "start";
-            C.endingNumber = A, o === "start" ? C.endingType = C.endingType === U.Stop ? U.StartStop : U.Start : (o === "stop" || o === "discontinue") && (C.endingType = C.endingType === U.Start ? U.StartStop : U.Stop);
+        const Q = T.getElementsByTagName("print");
+        for (let E = 0; E < Q.length; E++) {
+          const c = Q[E], m = c.getAttribute("new-system"), M = c.getAttribute("new-page");
+          console.log(`Measure ${G} print: newSystem=${m}`), m === "yes" && (b.printNewSystem = !0), M === "yes" && (b.printNewPage = !0);
+          const B = c.getElementsByTagName("system-layout")[0];
+          if (B) {
+            const A = B.getElementsByTagName("system-distance")[0];
+            A && (b.systemDistance = parseFloat(A.textContent || "0"));
+            const z = B.getElementsByTagName("top-system-distance")[0];
+            z && (b.topSystemDistance = parseFloat(z.textContent || "0"));
           }
-          if (w === "right" || !w) {
-            const A = v.getElementsByTagName("bar-style")[0]?.textContent, o = v.getElementsByTagName("repeat")[0];
-            o && o.getAttribute("direction") === "backward" ? C.endBarType = Y.RepeatEnd : A === "light-heavy" ? C.endBarType = Y.End : A === "light-light" && (C.endBarType = Y.Double);
-          } else if (w === "left") {
-            const A = v.getElementsByTagName("repeat")[0];
-            A && A.getAttribute("direction") === "forward" && (C.endBarType = Y.RepeatBegin);
+          const d = c.getElementsByTagName("staff-layout")[0];
+          if (d) {
+            const A = d.getElementsByTagName("staff-distance")[0];
+            A && (b.staffDistance = parseFloat(A.textContent || "0"));
+          }
+          const D = c.getElementsByTagName("page-layout")[0];
+          if (D) {
+            const A = D.getElementsByTagName("page-height")[0]?.textContent, z = D.getElementsByTagName("page-width")[0]?.textContent;
+            b.pageLayout = {
+              height: A ? parseFloat(A) : void 0,
+              width: z ? parseFloat(z) : void 0,
+              margins: void 0
+            };
+            const W = D.getElementsByTagName("page-margins")[0];
+            if (W) {
+              const j = W.getElementsByTagName("left-margin")[0]?.textContent, Z = W.getElementsByTagName("right-margin")[0]?.textContent, L = W.getElementsByTagName("top-margin")[0]?.textContent, H = W.getElementsByTagName("bottom-margin")[0]?.textContent;
+              b.pageLayout.margins = {
+                left: j ? parseFloat(j) : void 0,
+                right: Z ? parseFloat(Z) : void 0,
+                top: L ? parseFloat(L) : void 0,
+                bottom: H ? parseFloat(H) : void 0
+              };
+            }
           }
         }
-        const s = X.children;
-        let c = new W(0, 1), f = [];
-        for (let p = 0; p < s.length; p++) {
-          const v = s[p];
-          if (v.tagName === "direction") {
-            const w = v.getElementsByTagName("direction-type")[0];
-            if (w) {
-              const x = w.getElementsByTagName("dynamics")[0];
-              if (x)
-                for (let g = 0; g < x.children.length; g++) f.push(x.children[g].tagName);
-              const A = w.getElementsByTagName("wedge")[0];
-              if (A) {
-                const g = A.getAttribute("type");
-                g === "crescendo" || g === "diminuendo" ? (u = new lt(g === "crescendo" ? z.Crescendo : z.Diminuendo), i.wedges.push(u)) : g === "stop" && (u = void 0);
+        const st = T.getElementsByTagName("barline");
+        for (let E = 0; E < st.length; E++) {
+          const c = st[E], m = c.getAttribute("location"), M = c.getElementsByTagName("ending")[0];
+          if (M) {
+            const B = M.getAttribute("number") || "", d = M.getAttribute("type") || "start";
+            b.endingNumber = B, d === "start" ? b.endingType = b.endingType === ot.Stop ? ot.StartStop : ot.Start : (d === "stop" || d === "discontinue") && (b.endingType = b.endingType === ot.Start ? ot.StartStop : ot.Stop);
+          }
+          if (m === "right" || !m) {
+            const B = c.getElementsByTagName("bar-style")[0]?.textContent, d = c.getElementsByTagName("repeat")[0];
+            d && d.getAttribute("direction") === "backward" ? b.endBarType = nt.RepeatEnd : B === "light-heavy" ? b.endBarType = nt.End : B === "light-light" && (b.endBarType = nt.Double);
+          } else if (m === "left") {
+            const B = c.getElementsByTagName("repeat")[0];
+            B && B.getAttribute("direction") === "forward" && (b.endBarType = nt.RepeatBegin);
+          }
+        }
+        const U = T.childNodes;
+        let q = new tt(0, 1), K = [], f = [];
+        for (let E = 0; E < U.length; E++) {
+          const c = U[E];
+          if (c.nodeType === 1) {
+            if (c.tagName === "harmony") {
+              const m = c.getElementsByTagName("root-step")[0]?.textContent, M = c.getElementsByTagName("root-alter")[0]?.textContent, B = c.getElementsByTagName("kind")[0]?.getAttribute("text") || c.getElementsByTagName("kind")[0]?.textContent, d = c.getElementsByTagName("bass-step")[0]?.textContent, D = c.getElementsByTagName("bass-alter")[0]?.textContent;
+              if (m) {
+                const A = it[m.toUpperCase()];
+                if (A !== void 0) {
+                  const z = M ? parseInt(M) : 0, W = new rt(A, 4, z);
+                  let j;
+                  if (d) {
+                    const L = it[d.toUpperCase()];
+                    if (L !== void 0) {
+                      const H = D ? parseInt(D) : 0;
+                      j = new rt(L, 3, H);
+                    }
+                  }
+                  const Z = new Tt(W, B || "", j, [], S.clone());
+                  b.chordSymbols.push(Z);
+                }
               }
-              const o = w.getElementsByTagName("octave-shift")[0];
-              if (o) {
-                const g = o.getAttribute("type");
-                g === "up" || g === "down" ? (N = new ut(g === "up" ? J.Up : J.Down), i.octaveShifts.push(N)) : g === "stop" && (N = void 0);
+            } else if (c.tagName === "direction") {
+              const m = c.getElementsByTagName("direction-type")[0];
+              if (m) {
+                const B = m.getElementsByTagName("dynamics")[0];
+                if (B)
+                  for (let z = 0; z < B.childNodes.length; z++) {
+                    const W = B.childNodes[z];
+                    W.nodeType === 1 && K.push(W.tagName);
+                  }
+                const d = m.getElementsByTagName("words");
+                for (let z = 0; z < d.length; z++) {
+                  const W = d[z].textContent;
+                  W && f.push(W);
+                }
+                const D = m.getElementsByTagName("wedge")[0];
+                if (D) {
+                  const z = D.getAttribute("type");
+                  z === "crescendo" || z === "diminuendo" ? (i = new xt(z === "crescendo" ? lt.Crescendo : lt.Diminuendo), n.wedges.push(i)) : z === "stop" && (i = void 0);
+                }
+                const A = m.getElementsByTagName("octave-shift")[0];
+                if (A) {
+                  const z = A.getAttribute("type");
+                  z === "up" || z === "down" ? (p = new wt(z === "up" ? ct.Up : ct.Down), n.octaveShifts.push(p)) : z === "stop" && (p = void 0);
+                }
               }
-            }
-          } else if (v.tagName === "note") {
-            const w = v.getElementsByTagName("chord").length > 0, x = v.getElementsByTagName("grace").length > 0;
-            let A = w ? c.clone() : b.clone();
-            w || (c = b.clone());
-            const o = this.parseNote(v, B, A);
-            if (o) {
-              o.staffId += m, o.isGrace = x, f.length > 0 && !w && (o.dynamics.push(...f), f = []), u && (u.startNote || (u.startNote = o), u.endNote = o), N && (N.startNote || (N.startNote = o), N.endNote = o);
-              const g = v.getElementsByTagName("notations")[0];
-              if (g) {
-                const T = g.getElementsByTagName("slur");
-                for (let S = 0; S < T.length; S++) {
-                  const F = T[S], j = parseInt(F.getAttribute("number") || "1");
-                  if (F.getAttribute("type") === "start") {
-                    const k = new at();
-                    k.startNote = o, o.slurStarts.push(k), R[j] = k, i.slurs.push(k);
-                  } else {
-                    const k = R[j];
-                    k && (k.endNote = o, o.slurEnds.push(k), delete R[j]);
+              const M = c.getElementsByTagName("sound")[0];
+              if (M) {
+                const B = M.getAttribute("tempo");
+                if (B) {
+                  const d = parseFloat(B);
+                  isNaN(d) || b.tempos.push({ timestamp: q.clone(), bpm: d });
+                }
+              }
+            } else if (c.tagName === "note") {
+              const m = c.getElementsByTagName("chord").length > 0, M = c.getElementsByTagName("grace").length > 0;
+              let B = m ? q.clone() : S.clone();
+              m || (q = S.clone());
+              const d = this.parseNote(c, C, B);
+              if (d) {
+                if (d.staffId += N, d.isGrace = M, M) {
+                  const W = c.getElementsByTagName("grace")[0];
+                  if (W) {
+                    const j = W.getAttribute("slash");
+                    d.graceSlash = j === "yes";
                   }
                 }
-                const D = g.getElementsByTagName("tied");
-                for (let S = 0; S < D.length; S++) {
-                  const F = D[S], j = parseInt(F.getAttribute("number") || "1");
-                  if (F.getAttribute("type") === "start") {
-                    const k = new ct();
-                    k.startNote = o, o.tieStarts.push(k), n[j] = k, i.ties.push(k);
-                  } else {
-                    const k = n[j];
-                    k && (k.endNote = o, o.tieEnds.push(k), delete n[j]);
+                K.length > 0 && !m && (d.dynamics.push(...K), K = []), f.length > 0 && !m && (d.words.push(...f), f = []), i && (i.startNote || (i.startNote = d), i.endNote = d), p && (p.startNote || (p.startNote = d), p.endNote = d);
+                const D = c.getElementsByTagName("notations")[0];
+                let A = !1;
+                if (D) {
+                  const W = D.getElementsByTagName("slur");
+                  for (let $ = 0; $ < W.length; $++) {
+                    const _ = W[$], J = parseInt(_.getAttribute("number") || "1");
+                    if (_.getAttribute("type") === "start") {
+                      const X = new ht();
+                      X.startNote = d, d.slurStarts.push(X), F[J] = X, n.slurs.push(X);
+                    } else {
+                      const X = F[J];
+                      X && (X.endNote = d, d.slurEnds.push(X), delete F[J]);
+                    }
                   }
+                  const j = D.getElementsByTagName("tied");
+                  for (let $ = 0; $ < j.length; $++) {
+                    const _ = j[$], J = parseInt(_.getAttribute("number") || "1");
+                    if (_.getAttribute("type") === "start") {
+                      const X = new ft();
+                      X.startNote = d, d.tieStarts.push(X), O[J] = X, n.ties.push(X);
+                    } else {
+                      const X = O[J];
+                      X && (X.endNote = d, d.tieEnds.push(X), delete O[J]);
+                    }
+                  }
+                  const Z = D.getElementsByTagName("tuplet")[0];
+                  if (Z) {
+                    if (Z.getAttribute("type") === "start") {
+                      const $ = c.getElementsByTagName("time-modification")[0];
+                      if ($) {
+                        y = new vt(
+                          parseInt($.getElementsByTagName("actual-notes")[0]?.textContent || "3"),
+                          parseInt($.getElementsByTagName("normal-notes")[0]?.textContent || "2")
+                        );
+                        const _ = Z.getAttribute("bracket");
+                        _ === "yes" ? y.bracket = !0 : _ === "no" && (y.bracket = !1), Z.getAttribute("show-number") === "none" && (y.showNumber = !1);
+                      }
+                    }
+                    y && (d.tuplet = y, y.notes.push(d), A = !0), Z.getAttribute("type") === "stop" && (y = void 0);
+                  }
+                  const L = D.getElementsByTagName("articulations")[0];
+                  L && (L.getElementsByTagName("staccato").length > 0 && d.articulations.push("staccato"), L.getElementsByTagName("accent").length > 0 && d.articulations.push("accent"), L.getElementsByTagName("strong-accent").length > 0 && d.articulations.push("marcato"), L.getElementsByTagName("tenuto").length > 0 && d.articulations.push("tenuto")), D.getElementsByTagName("fermata").length > 0 && d.articulations.push("fermata");
+                  const H = D.getElementsByTagName("ornaments")[0];
+                  H && (H.getElementsByTagName("trill-mark").length > 0 && d.ornaments.push("trill"), H.getElementsByTagName("turn").length > 0 && d.ornaments.push("turn"), H.getElementsByTagName("inverted-turn").length > 0 && d.ornaments.push("inverted-turn"), H.getElementsByTagName("mordent").length > 0 && d.ornaments.push("mordent"), H.getElementsByTagName("inverted-mordent").length > 0 && d.ornaments.push("inverted-mordent"));
                 }
-                const y = g.getElementsByTagName("tuplet")[0];
-                if (y) {
-                  if (y.getAttribute("type") === "start") {
-                    const S = v.getElementsByTagName("time-modification")[0];
-                    E = new it(
-                      parseInt(S?.getElementsByTagName("actual-notes")[0]?.textContent || "3"),
-                      parseInt(S?.getElementsByTagName("normal-notes")[0]?.textContent || "2")
-                    );
-                  }
-                  E && (o.tuplet = E, E.notes.push(o)), y.getAttribute("type") === "stop" && (E = void 0);
-                } else E && (o.tuplet = E, E.notes.push(o));
-                const P = g.getElementsByTagName("articulations")[0];
-                P && (P.getElementsByTagName("staccato").length > 0 && o.articulations.push("staccato"), P.getElementsByTagName("accent").length > 0 && o.articulations.push("accent"), P.getElementsByTagName("strong-accent").length > 0 && o.articulations.push("marcato"), P.getElementsByTagName("tenuto").length > 0 && o.articulations.push("tenuto")), g.getElementsByTagName("fermata").length > 0 && o.articulations.push("fermata");
+                y && !A && (d.tuplet = y, y.notes.push(d));
+                const z = c.getElementsByTagName("lyric");
+                for (let W = 0; W < z.length; W++) {
+                  const j = z[W];
+                  d.lyrics.push({
+                    text: j.getElementsByTagName("text")[0]?.textContent || "",
+                    syllabic: j.getElementsByTagName("syllabic")[0]?.textContent || "single"
+                  });
+                }
+                !m && !M && (S = tt.Plus(S, d.length)), b.addNote(d);
               }
-              const G = v.getElementsByTagName("lyric");
-              for (let T = 0; T < G.length; T++) {
-                const D = G[T];
-                o.lyrics.push({
-                  text: D.getElementsByTagName("text")[0]?.textContent || "",
-                  syllabic: D.getElementsByTagName("syllabic")[0]?.textContent || "single"
-                });
-              }
-              !w && !x && (b = W.Plus(b, o.length)), C.addNote(o);
+            } else if (c.tagName === "backup") {
+              const m = parseInt(c.getElementsByTagName("duration")[0]?.textContent || "0"), M = new tt(m, C * 4);
+              M.numerator *= -1, S = tt.Plus(S, M);
+            } else if (c.tagName === "forward") {
+              const m = parseInt(c.getElementsByTagName("duration")[0]?.textContent || "0");
+              S = tt.Plus(S, new tt(m, C * 4));
             }
-          } else if (v.tagName === "backup") {
-            const w = parseInt(v.getElementsByTagName("duration")[0]?.textContent || "0"), x = new W(w, B * 4);
-            x.numerator *= -1, b = W.Plus(b, x);
-          } else if (v.tagName === "forward") {
-            const w = parseInt(v.getElementsByTagName("duration")[0]?.textContent || "0");
-            b = W.Plus(b, new W(w, B * 4));
           }
         }
       }
-      m += V;
+      N += v;
     }
-    return i;
+    return n;
   }
-  static parseNote(t, r, l) {
-    const i = t.getElementsByTagName("type")[0]?.textContent || "quarter", d = t.getElementsByTagName("voice")[0]?.textContent || "1", m = parseInt(t.getElementsByTagName("staff")[0]?.textContent || "1"), h = parseInt(t.getElementsByTagName("duration")[0]?.textContent || "1"), M = t.getElementsByTagName("rest")[0], I = t.getElementsByTagName("pitch")[0];
-    let B, V = !1;
-    if (M)
-      V = !0, B = new Z(H.B, 4, 0);
-    else if (I) {
-      const n = H[I.getElementsByTagName("step")[0]?.textContent] || H.C, u = parseInt(I.getElementsByTagName("octave")[0]?.textContent || "4"), N = parseInt(I.getElementsByTagName("alter")[0]?.textContent || "0");
-      B = new Z(n, u, N);
+  static parseNote(t, e, s) {
+    const n = t.getElementsByTagName("type")[0]?.textContent || "quarter", r = t.getElementsByTagName("voice")[0]?.textContent || "1", l = parseInt(t.getElementsByTagName("staff")[0]?.textContent || "1"), o = parseInt(t.getElementsByTagName("duration")[0]?.textContent || "1"), u = t.getElementsByTagName("rest")[0], x = t.getElementsByTagName("pitch")[0];
+    let N, g = !1;
+    if (u)
+      g = !0, N = new rt(it.B, 4, 0);
+    else if (x) {
+      const v = it[x.getElementsByTagName("step")[0]?.textContent] || it.C, P = parseInt(x.getElementsByTagName("octave")[0]?.textContent || "4"), F = parseInt(x.getElementsByTagName("alter")[0]?.textContent || "0");
+      N = new rt(v, P, F);
     } else
       return;
-    const R = new st(B, new W(h, r * 4), i, d, l, m);
-    return R.isRest = V, R;
+    const k = new yt(N, new tt(o, e * 4), n, r, s, l);
+    k.isRest = g;
+    const R = t.getElementsByTagName("accidental")[0]?.textContent;
+    R && (k.accidentalXml = R);
+    const I = t.getElementsByTagName("stem")[0]?.textContent;
+    I && (k.stemDirectionXml = I);
+    const V = t.getElementsByTagName("beam");
+    for (let v = 0; v < V.length; v++) {
+      const P = V[v].textContent;
+      P && k.beams.push(P);
+    }
+    return (N.step === 11 || N.step === 2) && console.log(`[Reader] Parsed Note: Step=${N.step} Alter=${N.alter} Oct=${N.octave} Stem=${I}`), t.getAttribute("print-object") === "no" && (k.printObject = !1), k;
   }
 }
-class mt {
+class Ct {
   constructor(t) {
     this.musicSheet = t;
   }
   musicSheet;
   // In a real OSMD, this would hold pages, systems, etc.
 }
-class _ {
+class ut {
   static getKeySignature(t) {
     switch (t) {
       case 0:
@@ -353,408 +643,910 @@ class _ {
         return "C";
     }
   }
-  static format(t, r = 1e3) {
-    const l = [];
-    let i = [], d = 0;
-    const m = t.musicSheet, h = /* @__PURE__ */ new Map(), M = ["treble", "bass"], I = ["4/4", "4/4"], B = ["C", "C"];
-    let V = !1;
-    for (const n of m.sourceMeasures) {
-      let u = a.Volta.type.NONE;
-      n.endingType === U.Start ? (u = a.Volta.type.BEGIN, V = !0) : n.endingType === U.Stop ? (u = a.Volta.type.END, V = !1) : n.endingType === U.StartStop ? (u = a.Volta.type.BEGIN_END, V = !1) : V && (u = a.Volta.type.MID), n.clefs.forEach((s, c) => {
-        if (s)
-          switch (s.clefType) {
-            case K.G:
-              M[c] = "treble";
+  static format(t, e, s = 1e3) {
+    const n = [];
+    let r = [], l = 0;
+    const o = /* @__PURE__ */ new Map(), u = ["treble", "bass"], x = ["4/4", "4/4"], N = ["C", "C"];
+    let g = !1;
+    const k = {};
+    let R = 0;
+    e.instruments.forEach((i) => {
+      i.name && (k[R] = i.name), R += i.numStaves;
+    });
+    const I = [];
+    for (const i of e.sourceMeasures) {
+      let p = h.Volta.type.NONE;
+      i.endingType === ot.Start ? (p = h.Volta.type.BEGIN, g = !0) : i.endingType === ot.Stop ? (p = h.Volta.type.END, g = !1) : i.endingType === ot.StartStop ? (p = h.Volta.type.BEGIN_END, g = !1) : g && (p = h.Volta.type.MID), i.clefs.forEach((f, E) => {
+        if (f)
+          switch (f.clefType) {
+            case at.G:
+              u[E] = "treble";
               break;
-            case K.F:
-              M[c] = "bass";
+            case at.F:
+              u[E] = "bass";
               break;
-            case K.C:
-              M[c] = "alto";
+            case at.C:
+              u[E] = "alto";
               break;
             default:
-              M[c] = "treble";
+              u[E] = "treble";
           }
-      }), n.rhythms.forEach((s, c) => {
-        s && (I[c] = `${s.numerator}/${s.denominator}`);
-      }), n.keys.forEach((s, c) => {
-        s && (B[c] = _.getKeySignature(s.key));
+      }), i.rhythms.forEach((f, E) => {
+        f && (x[E] = `${f.numerator}/${f.denominator}`);
+      }), i.keys.forEach((f, E) => {
+        f && (N[E] = ut.getKeySignature(f.key));
       });
-      const N = {}, E = {};
-      let b = 0;
-      n.notes.forEach((s) => b = Math.max(b, s.staffId - 1)), b = Math.max(b, n.clefs.length - 1);
-      for (let s = 0; s <= b; s++)
-        N[s] = {}, E[s] = [];
-      const O = {}, X = {};
-      for (const s of n.notes) {
-        const c = s.staffId - 1, f = s.voiceId, p = s.timestamp.RealValue;
-        O[c] || (O[c] = {}, X[c] = {}), O[c][f] || (O[c][f] = {}, X[c][f] = []), O[c][f][p] || (O[c][f][p] = [], X[c][f].push(p)), O[c][f][p].push(s);
+      const y = {}, S = {};
+      let w = 0;
+      i.notes.forEach((f) => w = Math.max(w, f.staffId - 1)), w = Math.max(w, i.clefs.length - 1);
+      for (let f = 0; f <= w; f++)
+        y[f] = {}, S[f] = [];
+      const T = {}, G = {};
+      for (const f of i.notes) {
+        const E = f.staffId - 1, c = f.voiceId, m = f.timestamp.RealValue;
+        T[E] || (T[E] = {}, G[E] = {}), T[E][c] || (T[E][c] = {}, G[E][c] = []), T[E][c][m] || (T[E][c][m] = [], G[E][c].push(m)), T[E][c][m].push(f);
       }
-      for (let s = 0; s <= b; s++) {
-        if (!O[s]) continue;
-        for (const f in O[s]) {
-          N[s][f] = [], X[s][f].sort((v, w) => v - w);
-          let p = [];
-          for (const v of X[s][f]) {
-            const w = O[s][f][v];
-            if (w.length === 0) continue;
-            const x = w.filter((y) => !y.isGrace), A = w.filter((y) => y.isGrace);
-            if (x.length === 0) {
-              p.push(...A);
+      for (let f = 0; f <= w; f++) {
+        if (!T[f]) continue;
+        for (const c in T[f]) {
+          y[f][c] = [], G[f][c].sort((M, B) => M - B);
+          let m = [];
+          for (const M of G[f][c]) {
+            const B = T[f][c][M];
+            if (B.length === 0) continue;
+            const d = B.filter((L) => !L.isGrace), D = B.filter((L) => L.isGrace);
+            if (d.length === 0) {
+              m.push(...D);
               continue;
             }
-            const o = x[0], g = [];
-            if (o.isRest)
-              g.push("b/4");
-            else
-              for (const y of x) {
-                const P = H[y.pitch.step].toLowerCase();
-                g.push(`${P}/${y.pitch.octave}`);
+            const A = d[0], z = [];
+            if (A.isRest)
+              z.push("b/4");
+            else {
+              const L = e.getInstrumentForStaff(f + 1), H = e.Transpose + (L ? L.Transpose : 0);
+              for (const $ of d) {
+                let _ = $.pitch;
+                H !== 0 && (_ = rt.transpose($.pitch, H));
+                const J = it[_.step].toLowerCase();
+                z.push(`${J}/${_.octave}`);
               }
-            let G = "q";
-            switch (o.durationType) {
+            }
+            let W = "q";
+            switch (A.durationType) {
               case "whole":
-                G = "w";
+                W = "w";
                 break;
               case "half":
-                G = "h";
+                W = "h";
                 break;
               case "quarter":
-                G = "q";
+                W = "q";
                 break;
               case "eighth":
-                G = "8";
+                W = "8";
                 break;
               case "16th":
-                G = "16";
+                W = "16";
                 break;
               default:
-                G = "q";
+                W = "q";
             }
-            o.isRest && (G += "r");
-            const T = new a.StaveNote({
-              clef: M[s] || "treble",
-              keys: g,
-              duration: G
-            });
-            T.sourceNote = o, x.forEach((y, P) => {
-              if (y.pitch.alter !== 0) {
-                let S = "";
-                y.pitch.alter === 1 ? S = "#" : y.pitch.alter === -1 ? S = "b" : y.pitch.alter === 2 ? S = "##" : y.pitch.alter === -2 && (S = "bb"), S && T.addModifier(new a.Accidental(S), P);
-              }
-              y.articulations.forEach((S) => {
-                let F = "";
-                if (a.Modifier.Position.ABOVE, S === "staccato" ? (F = "a.", a.Modifier.Position.BELOW) : S === "accent" ? F = "a>" : S === "marcato" ? F = "a^" : S === "tenuto" ? F = "a-" : S === "fermata" && (F = "a@a"), F) {
-                  const j = new a.Articulation(F);
-                  T.addModifier(j, P);
+            A.isRest && (W += "r");
+            let j;
+            A.printObject ? j = new h.StaveNote({
+              clef: u[f] || "treble",
+              keys: z,
+              duration: W
+            }) : j = new h.GhostNote({
+              duration: W
+            }), A.stemDirectionXml && (A.stemDirectionXml === "up" ? j.setStemDirection(h.Stem.UP) : A.stemDirectionXml === "down" && j.setStemDirection(h.Stem.DOWN));
+            try {
+              const H = A.length.numerator * 16384, $ = A.length.denominator, _ = new h.Fraction(H, $);
+              typeof j.setTicks == "function" ? j.setTicks(_) : j.ticks = _;
+            } catch (L) {
+              console.warn("Error setting ticks:", L);
+            }
+            j.sourceNote = A, d.forEach((L, H) => {
+              let $ = "";
+              if (L.accidentalXml)
+                switch (L.accidentalXml) {
+                  case "natural":
+                    $ = "n";
+                    break;
+                  case "sharp":
+                    $ = "#";
+                    break;
+                  case "flat":
+                    $ = "b";
+                    break;
+                  case "double-sharp":
+                    $ = "##";
+                    break;
+                  case "flat-flat":
+                    $ = "bb";
+                    break;
+                  case "quarter-flat":
+                    $ = "d";
+                    break;
+                  case "quarter-sharp":
+                    $ = "+";
+                    break;
                 }
-              }), y.dynamics && y.dynamics.length > 0 && y.dynamics.forEach((S) => {
-                const F = new a.Annotation(S).setFont("Times", 12, "italic").setVerticalJustification(a.Annotation.VerticalJustify.BOTTOM);
-                T.addModifier(F, P);
-              });
-            }), o.lyrics && o.lyrics.length > 0 && o.lyrics.forEach((y) => {
-              const P = y.text + (y.syllabic === "begin" || y.syllabic === "middle" ? "-" : ""), S = new a.Annotation(P).setFont("Times", 12, "normal").setVerticalJustification(a.Annotation.VerticalJustify.BOTTOM);
-              T.addModifier(S, 0);
-            });
-            const D = [...p, ...A];
-            if (D.length > 0) {
-              const y = D.map((S) => {
-                const F = H[S.pitch.step].toLowerCase(), j = new a.GraceNote({
-                  keys: [`${F}/${S.pitch.octave}`],
-                  duration: "8",
-                  slash: !0
+              else L.pitch.alter !== 0 && (L.pitch.alter === 1 ? $ = "#" : L.pitch.alter === -1 ? $ = "b" : L.pitch.alter === 2 ? $ = "##" : L.pitch.alter === -2 && ($ = "bb"));
+              if ($ && j.addModifier(new h.Accidental($), H), L.articulations.forEach((_) => {
+                let J = "";
+                if (_ === "staccato" ? J = "a." : _ === "accent" ? J = "a>" : _ === "marcato" ? J = "a^" : _ === "tenuto" ? J = "a-" : _ === "fermata" && (J = "a@a"), J) {
+                  const X = new h.Articulation(J);
+                  j.addModifier(X, H);
+                }
+              }), L.dynamics && L.dynamics.length > 0 && L.dynamics.forEach((_) => {
+                const J = new h.Annotation(_).setFont("Times", 12, "italic").setVerticalJustification(h.Annotation.VerticalJustify.BOTTOM);
+                j.addModifier(J, H);
+              }), L.words && L.words.length > 0 && L.words.forEach((_) => {
+                const J = new h.Annotation(_).setFont("Times", 11, "bold").setVerticalJustification(h.Annotation.VerticalJustify.TOP);
+                j.addModifier(J, H);
+              }), f === 0 && i.chordSymbols && i.chordSymbols.length > 0) {
+                const _ = L.timestamp ? L.timestamp.RealValue : -1;
+                _ >= 0 && i.chordSymbols.filter((X) => Math.abs(X.timestamp.RealValue - _) < 1e-3).forEach((X) => {
+                  let et = it[X.root.step].replace("None", "");
+                  X.root.alter === 1 ? et += "#" : X.root.alter === -1 && (et += "b"), X.kind && (X.kind === "major" ? et += "M" : X.kind === "minor" ? et += "m" : X.kind === "seventh" ? et += "7" : X.kind === "major-seventh" ? et += "M7" : X.kind === "minor-seventh" ? et += "m7" : X.kind === "dominant" ? et += "7" : et += X.kind), X.bass && (et += "/" + it[X.bass.step], X.bass.alter === 1 ? et += "#" : X.bass.alter === -1 && (et += "b"));
+                  const Et = new h.Annotation(et).setFont("Arial", 12, "bold").setVerticalJustification(h.Annotation.VerticalJustify.TOP);
+                  j.addModifier(Et, H);
                 });
-                if (S.pitch.alter !== 0) {
-                  let k = "";
-                  S.pitch.alter === 1 ? k = "#" : S.pitch.alter === -1 && (k = "b"), k && j.addModifier(new a.Accidental(k), 0);
+              }
+            }), A.lyrics && A.lyrics.length > 0 && A.lyrics.forEach((L) => {
+              if (L.text) {
+                const H = L.text + (L.syllabic === "begin" || L.syllabic === "middle" ? "-" : ""), $ = new h.Annotation(H).setFont("Serif", 10).setVerticalJustification(h.Annotation.VerticalJustify.BOTTOM);
+                j.addModifier($, 0);
+              }
+            });
+            const Z = [...m, ...D];
+            if (Z.length > 0) {
+              const L = Z.map(($) => {
+                const _ = it[$.pitch.step].toLowerCase(), J = new h.GraceNote({
+                  keys: [`${_}/${$.pitch.octave}`],
+                  duration: "8",
+                  // Can map durationType if needed, but 8 is standard for visual grace
+                  slash: $.graceSlash
+                });
+                if ($.pitch.alter !== 0) {
+                  let X = "";
+                  $.pitch.alter === 1 ? X = "#" : $.pitch.alter === -1 && (X = "b"), X && J.addModifier(new h.Accidental(X), 0);
                 }
-                return j;
-              }), P = new a.GraceNoteGroup(y);
-              T.addModifier(P, 0), p = [];
+                return J;
+              }), H = new h.GraceNoteGroup(L);
+              j.addModifier(H, 0), m = [];
             }
-            f === "1" ? T.setStemDirection(a.Stem.UP) : T.setStemDirection(a.Stem.DOWN), N[s][f].push(T);
-            for (const y of w)
-              h.set(y, T);
+            c === "1" ? j.setStemDirection(h.Stem.UP) : j.setStemDirection(h.Stem.DOWN), y[f][c].push(j), j.sourceNotes = B;
+            for (const L of B)
+              o.set(L, j);
           }
         }
-        const c = /* @__PURE__ */ new Set();
-        for (const f of n.notes)
-          if (f.staffId - 1 === s && f.tuplet && !c.has(f.tuplet)) {
-            const p = f.tuplet, v = p.notes.map((w) => h.get(w)).filter((w, x, A) => w && A.indexOf(w) === x);
-            if (v.length > 0) {
-              const w = new a.Tuplet(v, {
-                numNotes: p.actualNotes,
-                notesOccupied: p.normalNotes
-              });
-              E[s].push(w);
+        const E = /* @__PURE__ */ new Set();
+        for (const c of i.notes)
+          if (c.staffId - 1 === f && c.tuplet && !E.has(c.tuplet)) {
+            const m = c.tuplet, M = m.notes.map((B) => o.get(B)).filter((B, d, D) => B && D.indexOf(B) === d);
+            if (M.length > 0) {
+              const B = new h.Tuplet(M, {
+                numNotes: m.actualNotes,
+                notesOccupied: m.normalNotes
+              }), d = m.bracket !== !1;
+              B.setBracketed(d), S[f].push(B);
             }
-            c.add(p);
+            E.add(m);
           }
       }
-      let $ = 150;
-      for (let s = 0; s <= b; s++) {
-        const c = [];
-        for (const f in N[s]) {
-          const p = new a.Voice({ numBeats: 4, beatValue: 4 });
-          p.addTickables(N[s][f]), c.push(p);
+      let b = 80, Y = 0;
+      for (let f = 0; f <= w; f++)
+        for (const E in y[f]) {
+          let c = 0;
+          y[f][E].forEach((m) => {
+            const M = m.ticks ? m.ticks.value() : 0;
+            c += M;
+          }), c > Y && (Y = c);
         }
-        if (c.length > 0)
+      const Q = [];
+      for (let f = 0; f <= w; f++) {
+        const E = [];
+        for (const c in y[f]) {
+          let m = 4, M = 4;
+          if (Y > 0)
+            m = Y / 4096;
+          else if (x[f]) {
+            const D = x[f].split("/");
+            m = parseInt(D[0]), M = parseInt(D[1]);
+          }
+          let B = 0;
+          if (y[f][c].forEach((D) => {
+            const A = D.ticks ? D.ticks.value() : 0;
+            B += A;
+          }), Y > 0 && B < Y) {
+            const D = Y - B, A = new h.GhostNote({ duration: "b" });
+            A.setTicks ? A.setTicks(new h.Fraction(D, 1)) : A.ticks = new h.Fraction(D, 1), y[f][c].push(A);
+          }
+          const d = new h.Voice({ numBeats: m, beatValue: M });
+          d.setStrict(!1), d.addTickables(y[f][c]), E.push(d);
+        }
+        E.length > 0 && Q.push(...E);
+      }
+      if (Q.length > 0)
+        try {
+          const E = new h.Formatter().joinVoices(Q).preCalculateMinTotalWidth(Q);
+          let c = 40, m = 0;
+          for (let M = 0; M <= w; M++) {
+            let B = 0;
+            (i.clefs[M] || i.measureNumber === 1) && (B += 50), (i.rhythms[M] || i.measureNumber === 1) && (B += 40), i.keys[M] && (B += 30), B > m && (m = B);
+          }
+          c += m, b = Math.max(b, E * 1.2 + c);
+        } catch (f) {
+          console.warn("Formatting error:", f);
+        }
+      const st = [], U = [], q = {};
+      for (let f = 0; f <= w; f++)
+        for (const E in y[f]) {
+          q[E] || (q[E] = []);
+          const c = y[f][E].filter((m) => !(m instanceof h.GhostNote || m.getCategory && m.getCategory() === "ghostnote"));
+          q[E].push(...c);
+        }
+      for (const f in q) {
+        const E = q[f];
+        E.sort((M, B) => {
+          const d = M.sourceNotes && M.sourceNotes[0] ? M.sourceNotes[0].timestamp.RealValue : 0, D = B.sourceNotes && B.sourceNotes[0] ? B.sourceNotes[0].timestamp.RealValue : 0;
+          return d - D;
+        });
+        let c = !1, m = [];
+        for (const M of E) {
+          const B = M.sourceNotes ? M.sourceNotes[0] : null;
+          if (B && B.beams && B.beams.length > 0) {
+            c = !0;
+            const d = B.beams[0];
+            d === "begin" ? (m.length > 0 && (m.length > 1 && U.push(new h.Beam(m)), m = []), m.push(M)) : d === "continue" ? m.push(M) : d === "end" ? (m.push(M), m.length > 1 && U.push(new h.Beam(m)), m = []) : (d === "forward-hook" || d === "backward-hook") && m.push(M);
+          } else
+            m.length > 0 && (m.length > 1 && U.push(new h.Beam(m)), m = []);
+        }
+        if (m.length > 1 && U.push(new h.Beam(m)), !c && E.length > 1)
           try {
-            const p = new a.Formatter().joinVoices(c).preCalculateMinTotalWidth(c);
-            let v = 20;
-            (n.clefs[s] || n.measureNumber === 1) && (v += 40), (n.rhythms[s] || n.measureNumber === 1) && (v += 30), n.keys[s] && (v += 20), $ = Math.max($, p + v);
+            const M = h.Beam.generateBeams(E);
+            U.push(...M);
           } catch {
           }
       }
-      const C = [];
-      for (let s = 0; s <= b; s++) {
-        const c = [];
-        for (const f in N[s]) {
-          const p = a.Beam.generateBeams(N[s][f]);
-          c.push(...p);
-        }
-        C.push({
-          vfVoices: N[s],
-          beams: c,
-          vfTuplets: E[s],
-          clef: n.clefs[s] ? M[s] : void 0,
-          keySignature: n.keys[s] || n.measureNumber === 1 ? B[s] : void 0,
-          // Draw if explicit or start
-          timeSignature: n.rhythms[s] ? I[s] : void 0,
-          voltaType: s === 0 ? u : a.Volta.type.NONE,
-          voltaNumber: s === 0 ? n.endingNumber : ""
+      for (let f = 0; f <= w; f++)
+        st.push({
+          vfVoices: y[f],
+          beams: [],
+          // Global Beams are now separate
+          vfTuplets: S[f],
+          clef: i.clefs[f] ? u[f] : void 0,
+          keySignature: i.keys[f] || i.measureNumber === 1 ? N[f] : void 0,
+          timeSignature: i.rhythms[f] ? x[f] : void 0,
+          voltaType: f === 0 ? p : h.Volta.type.NONE,
+          voltaNumber: f === 0 ? i.endingNumber : "",
+          label: i.measureNumber === 1 ? k[f] : void 0,
+          // Layout Distances (Pass through from SourceMeasure)
+          systemDistance: i.systemDistance,
+          staffDistance: i.staffDistance,
+          topSystemDistance: i.topSystemDistance,
+          // Page Layout
+          printNewPage: i.printNewPage,
+          pageLayout: i.pageLayout
         });
-      }
-      let L;
-      if (n.endBarType !== void 0)
-        switch (n.endBarType) {
-          case Y.Single:
-            L = a.Barline.type.SINGLE;
+      let K;
+      if (i.endBarType !== void 0)
+        switch (i.endBarType) {
+          case nt.Single:
+            K = h.Barline.type.SINGLE;
             break;
-          case Y.Double:
-            L = a.Barline.type.DOUBLE;
+          case nt.Double:
+            K = h.Barline.type.DOUBLE;
             break;
-          case Y.End:
-            L = a.Barline.type.END;
+          case nt.End:
+            K = h.Barline.type.END;
             break;
-          case Y.RepeatEnd:
-            L = a.Barline.type.REPEAT_END;
+          case nt.RepeatEnd:
+            K = h.Barline.type.REPEAT_END;
             break;
-          case Y.RepeatBegin:
-            L = a.Barline.type.REPEAT_BEGIN;
+          case nt.RepeatBegin:
+            K = h.Barline.type.REPEAT_BEGIN;
             break;
           default:
-            L = a.Barline.type.SINGLE;
+            K = h.Barline.type.SINGLE;
         }
-      const q = {
-        measureNumber: n.measureNumber,
-        staves: C,
-        // New structure
-        width: $,
-        endBarLineType: L
-      };
-      if (d + q.width > r && i.length > 0) {
-        const c = (r - d) / i.length;
-        i.forEach((f) => f.width += c), l.push(i), i = [], d = 0;
-      }
-      i.push(q), d += q.width;
+      I.push({
+        measureNumber: i.measureNumber,
+        measureIndex: e.sourceMeasures.indexOf(i),
+        maxTicks: Y,
+        staves: st,
+        beams: U,
+        minWidth: b,
+        endBarLineType: K,
+        printNewSystem: i.printNewSystem,
+        printNewPage: i.printNewPage
+      });
     }
-    i.length > 0 && l.push(i);
-    const R = [];
-    for (const n of m.slurs)
-      if (n.startNote && n.endNote) {
-        const u = h.get(n.startNote), N = h.get(n.endNote);
-        if (u && N) {
-          const E = new a.Curve(u, N, {
-            thickness: 2,
-            xShift: 0,
-            yShift: 10
+    for (const i of I) {
+      const p = (i.printNewSystem || i.printNewPage) && r.length > 0, S = l + i.minWidth > s && r.length > 0;
+      if (p || S) {
+        const w = l, T = s - w;
+        {
+          const G = T / w;
+          r.forEach((b) => {
+            b.width = b.minWidth + b.minWidth * G;
           });
-          R.push(E);
+        }
+        n.push(r), r = [], l = 0;
+      }
+      r.push(i), l += i.minWidth;
+    }
+    r.length > 0 && (r.forEach((i) => i.width = i.minWidth), n.push(r));
+    const V = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new Map(), v = /* @__PURE__ */ new Map(), P = /* @__PURE__ */ new Map(), F = (i, p, y) => {
+      if (i === void 0) return;
+      P.has(i) || P.set(i, /* @__PURE__ */ new Map());
+      const S = P.get(i);
+      y.forEach((w) => {
+        S.has(w) || S.set(w, []), S.get(w)?.push(p);
+      });
+    };
+    n.forEach((i, p) => {
+      v.has(p) || v.set(p, /* @__PURE__ */ new Map()), i.forEach((y) => {
+        y.staves.forEach((S, w) => {
+          const T = Object.keys(S.vfVoices || {}), G = [];
+          if (T.forEach((b) => G.push(...S.vfVoices[b])), G.length > 0) {
+            G.forEach((Y) => {
+              V.set(Y, p), C.set(Y, w);
+            });
+            const b = v.get(p);
+            b.has(w) ? b.get(w).last = G[G.length - 1] : b.set(w, { first: G[0], last: G[G.length - 1] });
+          }
+        }), y.beams && y.beams.forEach((S) => {
+          const w = /* @__PURE__ */ new Set();
+          S.notes.forEach((T) => {
+            C.has(T) && w.add(C.get(T));
+          }), F(p, S, Array.from(w));
+        });
+      });
+    });
+    const O = [];
+    for (const i of e.slurs)
+      if (i.startNote && i.endNote) {
+        const p = o.get(i.startNote), y = o.get(i.endNote);
+        if (p && y) {
+          const S = V.get(p), w = V.get(y);
+          if (S !== void 0 && w !== void 0 && S !== w) {
+            const T = i.startNote.staffId - 1, G = v.get(S)?.get(T), b = i.endNote.staffId - 1, Y = v.get(w)?.get(b);
+            if (G && Y) {
+              let Q = !1;
+              try {
+                const q = p.getStemDirection(), K = y.getStemDirection();
+                q === h.Stem.UP && (Q = !0);
+              } catch {
+                Q = i.startNote.pitch.octave >= 5;
+              }
+              new h.Curve(p, G.last, {
+                thickness: 2,
+                xShift: 0,
+                yShift: 10,
+                invert: Q
+                // Force usage?
+              });
+              const st = new h.Curve(p, G.last, {
+                thickness: 2,
+                xShift: 0,
+                yShift: 10,
+                invert: Q
+              });
+              O.push(st), F(S, st, [T]);
+              const U = new h.Curve(Y.first, y, {
+                thickness: 2,
+                xShift: 0,
+                yShift: 10,
+                invert: Q
+              });
+              O.push(U), F(w, U, [b]);
+            } else
+              console.warn("Cross-system slur missing boundary notes, skipping to avoid diagonal.");
+          } else {
+            let T = !1;
+            try {
+              p.getStemDirection() === h.Stem.UP && (T = !0);
+            } catch {
+              T = i.startNote.pitch.octave >= 5;
+            }
+            const G = new h.Curve(p, y, {
+              thickness: 2,
+              xShift: 0,
+              yShift: 10,
+              invert: T
+            });
+            O.push(G);
+            const b = i.startNote.staffId - 1, Y = i.endNote.staffId - 1;
+            F(S, G, b === Y ? [b] : [b, Y]);
+          }
         }
       }
-    for (const n of m.ties)
-      if (n.startNote && n.endNote) {
-        const u = h.get(n.startNote), N = h.get(n.endNote);
-        if (u && N) {
-          const E = new a.StaveTie({
-            firstNote: u,
-            lastNote: N,
+    for (const i of e.ties)
+      if (i.startNote && i.endNote) {
+        const p = o.get(i.startNote), y = o.get(i.endNote);
+        if (p && y) {
+          const S = new h.StaveTie({
+            firstNote: p,
+            lastNote: y,
             firstIndexes: [0],
             lastIndexes: [0]
           });
-          R.push(E);
+          O.push(S);
+          const w = V.get(p), T = i.startNote.staffId - 1, G = i.endNote.staffId - 1;
+          F(w, S, [T, G]);
         }
       }
-    for (const n of m.wedges)
-      if (n.startNote && n.endNote) {
-        const u = h.get(n.startNote), N = h.get(n.endNote);
-        if (u && N) {
-          const E = new a.StaveHairpin(
-            { firstNote: u, lastNote: N },
-            n.type === z.Crescendo ? a.StaveHairpin.type.CRESC : a.StaveHairpin.type.DECRESC
+    for (const i of e.wedges)
+      if (i.startNote && i.endNote) {
+        const p = o.get(i.startNote), y = o.get(i.endNote);
+        if (p && y) {
+          const S = new h.StaveHairpin(
+            { firstNote: p, lastNote: y },
+            i.type === lt.Crescendo ? h.StaveHairpin.type.CRESC : h.StaveHairpin.type.DECRESC
           );
-          E.setPosition(a.Modifier.Position.BELOW), R.push(E);
+          S.setPosition(h.Modifier.Position.BELOW), O.push(S);
+          const w = V.get(p), T = i.startNote.staffId - 1, G = i.endNote.staffId - 1;
+          F(w, S, [T, G]);
         }
       }
-    for (const n of m.octaveShifts)
-      if (n.startNote && n.endNote) {
-        const u = h.get(n.startNote), N = h.get(n.endNote);
-        if (u && N) {
-          const E = n.type === J.Up ? "8va" : "8vb", b = n.type === J.Up ? a.TextBracket.Position.TOP : a.TextBracket.Position.BOTTOM, O = new a.TextBracket({
-            start: u,
-            stop: N,
-            text: E,
-            position: b
+    for (const i of e.octaveShifts)
+      if (i.startNote && i.endNote) {
+        const p = o.get(i.startNote), y = o.get(i.endNote);
+        if (p && y) {
+          const S = i.type === ct.Up ? "8va" : "8vb", w = i.type === ct.Up ? h.TextBracket.Position.TOP : h.TextBracket.Position.BOTTOM, T = new h.TextBracket({
+            start: p,
+            stop: y,
+            text: S,
+            position: w
           });
-          R.push(O);
+          O.push(T);
+          const G = V.get(p), b = i.startNote.staffId - 1;
+          F(G, T, [b]);
         }
       }
-    return { systems: l, curves: R };
+    return n.forEach((i, p) => {
+      const y = i[0];
+      y && y.staves.forEach((S) => {
+        !S.clef && S.activeClef && (S.clef = S.activeClef), !S.keySignature && S.activeKeySignature && (S.keySignature = S.activeKeySignature);
+      });
+    }), {
+      systems: n,
+      curves: O,
+      noteMap: o,
+      partGroups: e.partGroups,
+      metadata: {
+        title: e.Title,
+        composer: e.Composer
+      },
+      systemStaffCurves: P
+      // Export Map
+    };
   }
 }
-class ft {
+class Mt {
   constructor(t) {
-    this.container = t, this.renderer = new a.Renderer(t, a.Renderer.Backends.SVG), this.ctx = this.renderer.getContext();
+    this.container = t, this.container.querySelectorAll("svg").forEach((s) => this.container.removeChild(s)), this.renderer = new h.Renderer(t, h.Renderer.Backends.SVG), this.ctx = this.renderer.getContext();
   }
   container;
   renderer;
   ctx;
-  draw(t) {
-    const { systems: r, curves: l } = t;
-    this.ctx.clear();
-    const i = 10;
-    let d = i, m = 50;
-    const h = /* @__PURE__ */ new Map();
-    for (const M of r) {
-      const I = this.calculateSystemLayout(M);
-      let B = 0;
-      d = i;
-      for (const V of M) {
-        const R = V.staves, n = [];
-        if (R.forEach((u, N) => {
-          const E = m + I[N], b = new a.Stave(d, E, V.width);
-          if ((u.clef || d === i) && b.addClef(u.clef || "treble"), u.keySignature && b.addKeySignature(u.keySignature), u.timeSignature && b.addTimeSignature(u.timeSignature), V.endBarLineType !== void 0 && b.setEndBarType(V.endBarLineType), u.voltaType !== void 0 && u.voltaType !== a.Volta.type.NONE && b.setVoltaType(u.voltaType, u.voltaNumber || "1", 0), b.setContext(this.ctx).draw(), n.push(b), Object.keys(u.vfVoices || {}).length > 0) {
-            const { voices: X, allNotes: $ } = this.createVoices(u);
-            new a.Formatter().joinVoices(X).format(X, V.width - 50), X.forEach((c) => c.draw(this.ctx, b));
-            const C = b.getYForLine(0), q = b.getYForLine(4) - C;
-            $.forEach((c) => {
-              if (c.sourceNote) {
-                const f = c.sourceNote.timestamp.RealValue, p = c.getBoundingBox();
-                p && (h.has(f) || h.set(f, []), h.get(f).push({
-                  x: p.getX(),
-                  y: C,
-                  height: q
-                }));
-              }
-            }), u.beams && u.beams.forEach((c) => c.setContext(this.ctx).draw()), u.vfTuplets && u.vfTuplets.forEach((c) => c.setContext(this.ctx).draw());
-            let s = E + 100;
-            $.forEach((c) => {
-              const f = c.getBoundingBox();
-              f && (s = Math.max(s, f.getY() + f.getH())), c.getModifiers().forEach((p) => {
-                p.text_line && (s = Math.max(s, E + 140));
-              });
-            }), B = Math.max(B, s);
-          } else
-            B = Math.max(B, E + 100);
-        }), n.length > 1 && d === i) {
-          const u = new a.StaveConnector(n[0], n[n.length - 1]);
-          u.setType(a.StaveConnector.type.BRACE), u.setContext(this.ctx).draw();
-          const N = new a.StaveConnector(n[0], n[n.length - 1]);
-          N.setType(a.StaveConnector.type.SINGLE_LEFT), N.setContext(this.ctx).draw();
-        }
-        d += V.width;
-      }
-      m = B + 60;
+  drawTitleAndComposer(t, e, s) {
+    let n = e;
+    const r = this.container.clientWidth || 1e3, l = r / 2;
+    if (this.ctx.save(), this.ctx.setFillStyle(s), t.title) {
+      this.ctx.setFont("Times New Roman", 32, "bold");
+      let o = 200;
+      this.ctx.measureText && (o = this.ctx.measureText(t.title).width), this.ctx.fillText(t.title, l - o / 2, n), n += 40;
     }
-    return l && l.forEach((M) => M.setContext(this.ctx).draw()), this.renderer.resize && this.renderer.resize(this.container.clientWidth, m + 100), h;
+    if (t.composer) {
+      this.ctx.setFont("Times New Roman", 16, "italic");
+      let o = 100;
+      this.ctx.measureText && (o = this.ctx.measureText(t.composer).width), this.ctx.fillText(t.composer, r - o - 50, n), n += 20;
+    }
+    return this.ctx.restore(), n + 20;
+  }
+  systemLayouts = [];
+  lastDrawData = null;
+  lastOptions = {};
+  totalHeight = 0;
+  clear() {
+    this.ctx.clear();
+  }
+  draw(t, e = {}) {
+    return this.prepareLayout(t, e), this.render(null);
+  }
+  prepareLayout(t, e) {
+    this.lastDrawData = t, this.lastOptions = e, this.systemLayouts = [];
+    const { systems: s, systemStaffCurves: n, metadata: r } = t;
+    let l = 50;
+    r && (r.title || r.composer) && (l += (r.title ? 40 : 0) + (r.composer ? 20 : 0) + 20);
+    for (let o = 0; o < s.length; o++) {
+      const u = s[o], x = n?.get(o), N = this.calculateSystemLayout(u, x);
+      let g = 10, k = 10;
+      if (u.length > 0) {
+        const C = u[0];
+        C.staves[0].pageLayout?.margins?.left !== void 0 && (k = C.staves[0].pageLayout.margins.left);
+      }
+      g = k;
+      for (const C of u) {
+        const v = l, P = [];
+        for (let p = 0; p < C.staves.length; p++) {
+          const y = C.staves[p];
+          if (N.length > p) {
+            const S = v + N[p], w = new h.Stave(g, S, C.width);
+            (y.clef || g === k) && w.addClef(y.clef || "treble"), y.keySignature && w.addKeySignature(y.keySignature), y.timeSignature && w.addTimeSignature(y.timeSignature);
+            const T = C.endBarLineType !== void 0 ? C.endBarLineType : h.Barline.type.SINGLE;
+            if (w.setEndBarType(T), y.voltaType !== void 0 && y.voltaType !== h.Volta.type.NONE && w.setVoltaType(y.voltaType, y.voltaNumber || "1", 0), y.vfStaveInstance = w, P.push(w), Object.keys(y.vfVoices || {}).length > 0) {
+              const b = this.createVoices(y, C.maxTicks);
+              y.tempVoices = b.voices, y.tempAllNotes = b.allNotes, b.allNotes && b.allNotes.forEach((Y) => {
+                Y.setStave && Y.setStave(w);
+              });
+            }
+          }
+        }
+        let F = 0;
+        P.forEach((p) => {
+          p.format(), p.getNoteStartX() > F && (F = p.getNoteStartX());
+        }), P.forEach((p) => p.setNoteStartX(F));
+        const O = [];
+        C.staves.forEach((p) => {
+          p.tempVoices && O.push(...p.tempVoices);
+        });
+        let i = !1;
+        if (O.length > 0)
+          try {
+            const p = Math.max(50, C.width - (F - g) - 10);
+            new h.Formatter().joinVoices(O).format(O, p), i = !0;
+          } catch {
+          }
+        i || C.staves.forEach((p, y) => {
+          const S = p.tempVoices, w = P[y];
+          if (S) {
+            const T = w.getNoteStartX(), G = Math.max(50, C.width - (T - w.getX()) - 10);
+            try {
+              new h.Formatter().joinVoices(S).format(S, G);
+            } catch {
+              new h.Formatter().format(S, G);
+            }
+          }
+        }), C.staves.forEach((p) => {
+          p.tempVoices && p.tempVoices.forEach((y) => {
+            y.getTickables().forEach((S) => {
+              S.sourceNote && S.sourceNote.stemDirectionXml && (S.sourceNote.stemDirectionXml === "up" ? S.setStemDirection(h.Stem.UP) : S.sourceNote.stemDirectionXml === "down" && S.setStemDirection(h.Stem.DOWN));
+            });
+          });
+        }), g += C.width;
+      }
+      const R = N.length - 1, I = N[R] + 120, V = u[0];
+      if (V) {
+        const C = V.staves[0];
+        o > 0 && C.printNewPage && (l += 80);
+      }
+      this.systemLayouts.push({
+        y: l,
+        height: I,
+        systemIndex: o
+      }), l += I;
+    }
+    this.totalHeight = l;
+  }
+  render(t) {
+    const e = this.lastDrawData, s = this.lastOptions;
+    if (!e) return /* @__PURE__ */ new Map();
+    const { systems: n, curves: r, systemStaffCurves: l, partGroups: o, metadata: u } = e, { darkMode: x, zoom: N = 1 } = s;
+    this.ctx.clear();
+    const g = x ? "#FFFFFF" : "#000000", k = { fillStyle: g, strokeStyle: g };
+    this.ctx.setFillStyle(g), this.ctx.setStrokeStyle(g), this.renderer.ctx.element.style.filter = "none", this.renderer.ctx.element.style.display = "block";
+    const R = this.container.clientWidth, I = this.totalHeight + 50, V = I * N;
+    if (this.renderer.resize) {
+      this.renderer.resize(R, V);
+      const P = R / N;
+      this.ctx.svg.setAttribute("viewBox", `0 0 ${P} ${I}`);
+    }
+    (!t || t.top < 200) && this.drawTitleAndComposer(u, 50, g);
+    const C = /* @__PURE__ */ new Map(), v = 10;
+    for (const P of this.systemLayouts) {
+      if (t) {
+        const T = P.y * N, G = (P.y + P.height + 60) * N, b = t.top, Y = t.top + t.height;
+        if (G < b || T > Y)
+          continue;
+      }
+      const F = P.systemIndex, O = n[F], i = l?.get(F);
+      this.calculateSystemLayout(O, i);
+      let p = P.y, y = v;
+      const S = O[0];
+      let w = v;
+      if (S) {
+        const T = S.staves[0];
+        F > 0 && T.printNewPage && (this.ctx.save(), this.ctx.setStrokeStyle("#dddddd"), this.ctx.setLineWidth(2), this.ctx.beginPath(), this.ctx.moveTo(20, p - 40), this.ctx.lineTo(this.container.clientWidth - 20, p - 40), this.ctx.stroke(), this.ctx.restore()), T.pageLayout && T.pageLayout.margins && T.pageLayout.margins.left !== void 0 && (w = T.pageLayout.margins.left), S.systemDistance !== void 0 && S.systemDistance;
+      }
+      y = w;
+      for (const T of O) {
+        this.ctx.openGroup && this.ctx.openGroup("measure", `measure-${T.measureNumber}`);
+        const G = T.staves, b = [];
+        let Y = Number.MAX_VALUE, Q = Number.MIN_VALUE;
+        if (G.forEach((U) => {
+          const q = U.vfStaveInstance;
+          q && (this.ctx.setFillStyle(g), this.ctx.setStrokeStyle(g), q.setContext(this.ctx).draw(), b.push(q), q.getY() < Y && (Y = q.getY()), q.getBottomY() > Q && (Q = q.getBottomY()));
+        }), G.forEach((U, q) => {
+          const K = b[q], f = U.tempVoices, E = U.tempAllNotes;
+          f && K && (E && E.forEach((c) => {
+            c.setStyle && c.setStyle(k), c.setStemStyle && c.setStemStyle(k), c.setLedgerLineStyle && c.setLedgerLineStyle(k);
+          }), f.forEach((c) => c.draw(this.ctx, K)), U.vfTuplets && U.vfTuplets.forEach((c) => {
+            this.ctx.setFillStyle(g), this.ctx.setStrokeStyle(g);
+            try {
+              c.setContext(this.ctx).draw();
+            } catch {
+            }
+          }));
+        }), T.beams && T.beams.forEach((U) => {
+          U.setStyle && U.setStyle(k), this.ctx.setFillStyle(g), this.ctx.setStrokeStyle(g);
+          try {
+            U.setContext(this.ctx).draw();
+          } catch {
+          }
+        }), b.length > 0 && Math.abs(b[0].getX() - w) < 1 && (o && o.forEach((U) => {
+          const q = U.startStaffId - 1, K = U.endStaffId - 1;
+          if (q >= 0 && K < b.length && q <= K) {
+            const f = b[q], E = b[K];
+            let c = h.StaveConnector.type.BRACE;
+            U.groupSymbol === "bracket" ? c = h.StaveConnector.type.BRACKET : U.groupSymbol === "brace" ? c = h.StaveConnector.type.BRACE : (U.groupSymbol === "line" || U.groupSymbol === "square") && (c = h.StaveConnector.type.SINGLE_LEFT);
+            const m = new h.StaveConnector(f, E);
+            m.setType(c), this.ctx.setFillStyle(g), this.ctx.setStrokeStyle(g), m.setContext(this.ctx).draw();
+          }
+        }), b.length > 1)) {
+          const U = new h.StaveConnector(b[0], b[b.length - 1]);
+          U.setType(h.StaveConnector.type.SINGLE_LEFT), this.ctx.setFillStyle(g), this.ctx.setStrokeStyle(g), U.setContext(this.ctx).draw();
+        }
+        if (O.indexOf(T) === O.length - 1 && b.length > 1) {
+          const U = b[0], q = b[b.length - 1], K = U.getX() + U.getWidth();
+          this.ctx.beginPath(), this.ctx.setStrokeStyle(g), this.ctx.setLineWidth(1.5), this.ctx.moveTo(K, U.getYForLine(0)), this.ctx.lineTo(K, q.getYForLine(q.getNumLines() - 1)), this.ctx.stroke();
+        }
+        C.set(T.measureIndex, { topY: Y, botY: Q }), this.ctx.closeGroup && this.ctx.closeGroup(), y += T.width;
+      }
+    }
+    return r && (this.ctx.setStrokeStyle(g), this.ctx.setFillStyle(g), r.forEach((P) => {
+      try {
+        P.setContext(this.ctx).draw();
+      } catch {
+      }
+    })), C;
   }
   /**
    * Calculates the Y positions for each staff in a system to avoid collisions.
    */
-  calculateSystemLayout(t) {
+  calculateSystemLayout(t, e) {
     if (t.length === 0) return [];
-    const r = t[0].staves.length, l = [0];
-    let i = 0;
-    for (let d = 0; d < r - 1; d++) {
-      let m = 80;
-      for (const h of t) {
-        const M = h.staves[d], I = h.staves[d + 1], B = this.measureStaffBottom(M, h.width), V = this.measureStaffTop(I, h.width), n = B - V + 10;
-        m = Math.max(m, n);
+    const s = t[0].staves.length, n = [0];
+    let r = 0;
+    for (let l = 0; l < s - 1; l++) {
+      let o = 60;
+      const u = t[0];
+      u && u.staffDistance !== void 0 && (o = Math.max(o, u.staffDistance));
+      for (const N of t) {
+        const g = N.staves[l], k = N.staves[l + 1], R = e?.get(l) || [], I = e?.get(l + 1) || [], V = this.computeStaffContours(g, N.width, N.maxTicks, R), C = this.computeStaffContours(k, N.width, N.maxTicks, I), v = Math.min(V.bottomLine.length, C.skyline.length);
+        for (let P = 0; P < v; P++) {
+          const F = V.bottomLine[P] - C.skyline[P];
+          o = Math.max(o, F);
+        }
       }
-      i += m, l.push(i);
+      r += o + 20, n.push(r);
     }
-    return l;
+    return n;
   }
-  measureStaffBottom(t, r) {
-    let l = 80;
-    if (Object.keys(t.vfVoices || {}).length === 0) return l;
-    const { voices: d, allNotes: m } = this.createVoices(t);
-    return new a.Stave(0, 0, r), new a.Formatter().joinVoices(d).format(d, r - 50), m.forEach((h) => {
-      h.keys.forEach((I, B) => {
-        const R = h.getKeyProps()[B].line * 10;
-        l = Math.max(l, R + 20);
-      }), h.modifiers.some((I) => I.category === "annotation") && (l += 30);
-    }), l;
+  computeStaffContours(t, e, s, n = []) {
+    const l = Math.ceil(e / 10), o = new Array(l).fill(0), u = new Array(l).fill(40);
+    if (Object.keys(t.vfVoices || {}).length === 0) return { skyline: o, bottomLine: u };
+    const { voices: N, allNotes: g } = this.createVoices(t, s);
+    new h.Formatter().joinVoices(N).format(N, e - 20);
+    const k = (I, V, C, v) => {
+      const P = Math.max(0, Math.floor(I / 10)), F = Math.min(l - 1, Math.floor((I + C) / 10));
+      for (let O = P; O <= F; O++)
+        o[O] = Math.min(o[O], V), u[O] = Math.max(u[O], V + v);
+    };
+    g.forEach((I) => {
+      const V = I.getTickContext();
+      if (!V) return;
+      const C = V.getX();
+      let v = 0, P = 40;
+      if (I.keys.forEach((F, O) => {
+        const p = I.getKeyProps()[O].line * 10;
+        v = Math.min(v, p - 10), P = Math.max(P, p + 10);
+      }), I instanceof h.StaveNote)
+        try {
+          I.getStemDirection() === h.Stem.UP ? v = Math.min(v, -45) : P = Math.max(P, 75);
+        } catch {
+        }
+      I.modifiers.forEach((F) => {
+        let O = 20;
+        F.getWidth ? O = F.getWidth() : F.text && (O = F.text.length * 6);
+        const i = C - O / 2;
+        if (F.category === "annotation" || F.category === "text") {
+          let p = !0;
+          F.getVerticalJustification && F.getVerticalJustification() === h.Annotation.VerticalJustify.TOP && (p = !1), p ? (k(i, P, O, 25), P += 25) : (k(i, v - 25, O, 25), v -= 25);
+        }
+      }), k(C, v, 20, P - v);
+    });
+    const R = (I) => {
+      try {
+        let V, C;
+        const v = I;
+        if (v.from && v.to ? (V = v.from, C = v.to) : v.first_note && v.last_note ? (V = v.first_note, C = v.last_note) : v.start && v.stop ? (V = v.start, C = v.stop) : v.notes && v.notes.length > 0 && (V = v.notes[0], C = v.notes[v.notes.length - 1]), V && C) {
+          const P = V.getAbsoluteX(), F = C.getAbsoluteX();
+          if (isNaN(P) || isNaN(F)) return;
+          let O = !1, i = 15;
+          if (I instanceof h.StaveHairpin)
+            O = !0, i = 20;
+          else if (I instanceof h.TextBracket)
+            I.position === h.TextBracket.Position.BOTTOM && (O = !0), i = 20;
+          else if (v.render_options)
+            v.render_options.invert && (O = !0), i = 15;
+          else {
+            if (I instanceof h.StaveTie)
+              return;
+            if (v.notes) {
+              try {
+                V.getStemDirection() === h.Stem.DOWN && (O = !0);
+              } catch {
+              }
+              i = 15;
+            }
+          }
+          const p = Math.max(0, Math.floor(P / 10)), y = Math.min(l - 1, Math.floor(F / 10));
+          for (let S = p; S <= y; S++)
+            O ? u[S] += i : o[S] -= i;
+        }
+      } catch {
+      }
+    };
+    return n && n.length > 0 && n.forEach(R), { skyline: o, bottomLine: u };
   }
-  measureStaffTop(t, r) {
-    let l = 0;
-    const i = Object.keys(t.vfVoices || {});
-    if (i.length === 0) return l;
-    const d = [];
-    for (const m of i) d.push(...t.vfVoices[m]);
-    return d.forEach((m) => {
-      m.keys.forEach((h, M) => {
-        const B = m.getKeyProps()[M].line * 10;
-        l = Math.min(l, B - 20);
+  /**
+   * Get the measure index at the given coordinates (relative to container).
+   * Uses the calculated System Layout.
+   */
+  getMeasureAt(t, e, s) {
+    const n = e / s, r = t / s;
+    let l = null;
+    for (const x of this.systemLayouts)
+      if (n >= x.y && n <= x.y + x.height + 60) {
+        l = this.lastDrawData.systems[x.systemIndex];
+        break;
+      }
+    if (!l) return;
+    let o = 10;
+    const u = l[0];
+    if (u) {
+      const x = u.staves[0];
+      x.pageLayout && x.pageLayout.margins && x.pageLayout.margins.left !== void 0 && (o = x.pageLayout.margins.left);
+    }
+    for (const x of l) {
+      if (r >= o && r <= o + x.width)
+        return x.measureIndex;
+      o += x.width;
+    }
+  }
+  /**
+   * Get bounds for a specific measure index.
+   * Useful for Cursor when the measure might not be legally rendered yet, 
+   * or we want fast lookup without re-rendering.
+   */
+  getMeasureBounds(t) {
+    const e = this.lastDrawData?.systems;
+    if (e)
+      for (const s of this.systemLayouts) {
+        const n = e[s.systemIndex];
+        if (n.length > 0) {
+          const r = n[0].measureIndex, l = n[n.length - 1].measureIndex;
+          if (t >= r && t <= l)
+            return {
+              topY: s.y,
+              botY: s.y + s.height
+            };
+        }
+      }
+  }
+  createVoices(t, e = 0) {
+    let s = 4, n = 4;
+    if (e > 0)
+      s = e / 4096;
+    else if (t.timeSignature) {
+      const u = t.timeSignature.split("/");
+      s = parseInt(u[0]), n = parseInt(u[1]);
+    }
+    const r = [];
+    let l = [];
+    const o = Object.keys(t.vfVoices || {});
+    for (const u of o) {
+      const x = t.vfVoices[u] || [];
+      let N = 0;
+      x.forEach((R) => {
+        const I = R.ticks ? R.ticks.value() : 0;
+        N += I;
       });
-    }), l;
-  }
-  createVoices(t) {
-    let r = 4, l = 4;
-    if (t.timeSignature) {
-      const h = t.timeSignature.split("/");
-      r = parseInt(h[0]), l = parseInt(h[1]);
+      const g = [...x];
+      if (e > 0 && N < e) {
+        const R = e - N, I = new h.GhostNote({ duration: "b" });
+        I.setTicks ? I.setTicks(new h.Fraction(R, 1)) : I.ticks = new h.Fraction(R, 1), g.push(I);
+      }
+      const k = new h.Voice({ numBeats: s, beatValue: n });
+      k.setStrict(!1), k.addTickables(g), r.push(k), l.push(...x);
     }
-    const i = [];
-    let d = [];
-    const m = Object.keys(t.vfVoices || {});
-    for (const h of m) {
-      const M = t.vfVoices[h], I = new a.Voice({ numBeats: r, beatValue: l });
-      I.setStrict(!1), I.addTickables(M), i.push(I), d.push(...M);
-    }
-    return { voices: i, allNotes: d };
+    return { voices: r, allNotes: l };
   }
 }
-class dt {
+class It {
   static async MXLtoXML(t) {
-    const r = new Q();
+    const e = new Bt();
     try {
-      const l = await r.loadAsync(t), i = Object.keys(l.files);
-      let d = "META-INF/container.xml", m = i.find((h) => h.endsWith(".xml") && !h.includes("container.xml") && !h.startsWith("__MACOSX"));
-      if (m || (m = i.find((h) => h.endsWith(".musicxml") && !h.startsWith("__MACOSX"))), m)
-        return await l.file(m)?.async("string") || "";
+      const s = await e.loadAsync(t), n = Object.keys(s.files);
+      let r = "META-INF/container.xml", l = n.find((o) => o.endsWith(".xml") && !o.includes("container.xml") && !o.startsWith("__MACOSX"));
+      if (l || (l = n.find((o) => o.endsWith(".musicxml") && !o.startsWith("__MACOSX"))), l)
+        return await s.file(l)?.async("string") || "";
       throw new Error("No MusicXML file found in MXL.");
-    } catch (l) {
-      throw console.error(l), new Error("Failed to parse MXL file.");
+    } catch (s) {
+      throw console.error(s), new Error("Failed to parse MXL file.");
     }
   }
 }
-class pt {
-  constructor(t) {
-    this.container = t, getComputedStyle(this.container).position === "static" && (this.container.style.position = "relative"), this.cursorElement = document.createElement("div"), this.cursorElement.style.position = "absolute", this.cursorElement.style.zIndex = "1000", this.cursorElement.style.backgroundColor = "rgba(255, 0, 0, 0.5)", this.cursorElement.style.width = "4px", this.cursorElement.style.pointerEvents = "none", this.cursorElement.style.display = "none", this.container.appendChild(this.cursorElement);
+var At = /* @__PURE__ */ ((a) => (a[a.ThinLeft = 0] = "ThinLeft", a[a.CurrentArea = 1] = "CurrentArea", a))(At || {});
+class Ot {
+  constructor(t, e, s = {}) {
+    this.container = t, this.osmd = e, this.options = {
+      type: 1,
+      color: "#33e02f",
+      alpha: 0.5,
+      follow: !0,
+      ...s
+    }, getComputedStyle(this.container).position === "static" && (this.container.style.position = "relative"), this.cursorElement = document.createElement("div"), this.cursorElement.style.position = "absolute", this.cursorElement.style.zIndex = "1000", this.cursorElement.style.pointerEvents = "none", this.cursorElement.style.display = "none", this.updateStyle(), this.container.appendChild(this.cursorElement);
   }
   container;
   cursorElement;
-  // Map<Timestamp RealValue, Position[]>
-  timestampMap = /* @__PURE__ */ new Map();
-  timestamps = [];
+  osmd;
+  options;
+  sheet;
+  noteMap;
+  measureBounds;
+  // Ordered steps for playback
+  steps = [];
   currentIndex = 0;
   get hidden() {
     return this.cursorElement.style.display === "none";
   }
-  init(t) {
-    this.timestampMap = t, this.timestamps = Array.from(t.keys()).sort((r, l) => r - l), this.currentIndex = 0, this.hide();
+  get iteratorIndex() {
+    return this.currentIndex;
+  }
+  set iteratorIndex(t) {
+    t >= 0 && t < this.steps.length && (this.currentIndex = t, this.update());
+  }
+  init(t, e, s) {
+    this.sheet = t, this.noteMap = e, this.measureBounds = s, this.steps = [];
+    const n = /* @__PURE__ */ new Map();
+    this.sheet.sourceMeasures.forEach((l, o) => {
+      l.notes.forEach((u) => {
+        const x = u.timestamp.RealValue, N = `${o}_${x.toFixed(4)}`;
+        n.has(N) || n.set(N, { measureIndex: o, ts: x, notes: [] }), n.get(N).notes.push(u);
+      });
+    });
+    const r = [];
+    n.forEach((l) => {
+      let o = Number.MAX_VALUE, u = !1;
+      l.notes.forEach((x) => {
+        const N = this.noteMap.get(x);
+        if (N) {
+          const g = N.getBoundingBox();
+          g && (g.getX() < o && (o = g.getX()), u = !0);
+        }
+      }), u && r.push({
+        timestamp: l.ts,
+        notes: l.notes,
+        measureIndex: l.measureIndex,
+        x: o
+      });
+    }), r.sort((l, o) => l.measureIndex !== o.measureIndex ? l.measureIndex - o.measureIndex : l.x - o.x), this.steps = r, this.currentIndex = 0, this.hide();
   }
   show() {
     this.cursorElement.style.display = "block", this.update();
@@ -763,7 +1555,7 @@ class pt {
     this.cursorElement.style.display = "none";
   }
   next() {
-    this.currentIndex < this.timestamps.length - 1 && (this.currentIndex++, this.update());
+    this.currentIndex < this.steps.length - 1 && (this.currentIndex++, this.update());
   }
   prev() {
     this.currentIndex > 0 && (this.currentIndex--, this.update());
@@ -771,45 +1563,246 @@ class pt {
   reset() {
     this.currentIndex = 0, this.update();
   }
+  setMeasure(t) {
+    const e = this.steps.findIndex((s) => s.measureIndex === t);
+    e !== -1 && (this.currentIndex = e, this.update());
+  }
+  setOptions(t) {
+    this.options = { ...this.options, ...t }, this.updateStyle(), this.hidden || this.update();
+  }
+  updateStyle() {
+    if (this.options.type === 0)
+      this.cursorElement.style.background = this.options.color, this.cursorElement.style.opacity = "1", this.cursorElement.style.boxShadow = "none";
+    else {
+      const t = this.hexToRgb(this.options.color);
+      this.cursorElement.style.background = `rgba(${t.r}, ${t.g}, ${t.b}, ${this.options.alpha})`, this.cursorElement.style.boxShadow = "none", this.cursorElement.style.opacity = "1";
+    }
+  }
+  hexToRgb(t) {
+    const e = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(t);
+    return e ? {
+      r: parseInt(e[1], 16),
+      g: parseInt(e[2], 16),
+      b: parseInt(e[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+  }
   update() {
-    if (this.timestamps.length === 0) return;
-    const t = this.timestamps[this.currentIndex], r = this.timestampMap.get(t);
-    if (r && r.length > 0) {
-      let l = r[0].y, i = r[0].y + r[0].height, d = r[0].x;
-      r.forEach((m) => {
-        l = Math.min(l, m.y), i = Math.max(i, m.y + m.height), d = Math.min(d, m.x);
-      }), this.cursorElement.style.left = `${d}px`, this.cursorElement.style.top = `${l}px`, this.cursorElement.style.height = `${i - l}px`;
+    if (this.steps.length === 0 || !this.sheet || !this.noteMap || !this.measureBounds) return;
+    const t = this.steps[this.currentIndex], e = this.osmd.zoom;
+    let s = Number.MAX_VALUE, n = Number.MIN_VALUE, r = !1;
+    if (t.notes.forEach((l) => {
+      const o = this.noteMap.get(l);
+      if (o) {
+        const u = o.getBoundingBox();
+        if (u && u.getX() > 5) {
+          r = !0;
+          const x = u.getX() * e, N = u.getW() * e;
+          x < s && (s = x), x + N > n && (n = x + N);
+        }
+      }
+    }), r) {
+      const l = this.measureBounds.get(t.measureIndex);
+      if (l) {
+        const o = l.topY * e, x = l.botY * e - o, N = n - s;
+        this.options.type === 0 ? (this.cursorElement.style.left = `${s - 3 / 2}px`, this.cursorElement.style.top = `${o}px`, this.cursorElement.style.height = `${x}px`, this.cursorElement.style.width = "3px") : (this.cursorElement.style.left = `${s}px`, this.cursorElement.style.top = `${o}px`, this.cursorElement.style.height = `${x}px`, this.cursorElement.style.width = `${Math.max(N, 10)}px`), this.options.follow && this.cursorElement.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "center"
+        });
+      }
     }
   }
 }
-class yt {
-  constructor(t) {
+class Dt {
+  audioContext;
+  isPlaying = !1;
+  events = [];
+  nextEventIndex = 0;
+  schedulerInterval = null;
+  startTime = 0;
+  constructor() {
+  }
+  init() {
+    this.audioContext || (this.audioContext = new (window.AudioContext || window.webkitAudioContext)());
+  }
+  async resume() {
+    this.init(), this.audioContext && this.audioContext.state === "suspended" && await this.audioContext.resume();
+  }
+  loadScore(t) {
+    this.events = [];
+    let e = 120, s = 0;
+    for (const n of t.sourceMeasures) {
+      const r = (o) => o * 60 / e;
+      if (n.tempos.length > 0) {
+        const o = n.tempos.find((u) => u.timestamp.RealValue === 0);
+        o && (e = o.bpm);
+      }
+      for (const o of n.notes) {
+        if (o.isRest) continue;
+        const u = o.timestamp.RealValue, x = o.length.RealValue, N = s + r(u), g = r(x), k = o.pitch.Frequency;
+        this.events.push({
+          type: "note",
+          time: N,
+          duration: g,
+          pitch: k,
+          note: o
+        });
+      }
+      let l = 0;
+      n.notes.length > 0 ? l = Math.max(...n.notes.map((o) => o.timestamp.RealValue + o.length.RealValue)) : l = 4 / 4, s += l * 4 * 60 / e;
+    }
+    this.events.sort((n, r) => n.time - r.time), console.log(`[AudioPlayer] Loaded ${this.events.length} events. Duration: ${s}s`);
+  }
+  play() {
+    this.resume(), this.isPlaying = !0, this.nextEventIndex = 0, this.startTime = this.audioContext?.currentTime || 0, this.schedulerInterval = window.setInterval(() => this.schedule(), 25), console.log("[AudioPlayer] Play");
+  }
+  stop() {
+    this.isPlaying = !1, this.schedulerInterval && (clearInterval(this.schedulerInterval), this.schedulerInterval = null), console.log("[AudioPlayer] Stop");
+  }
+  // ...
+  get state() {
+    return this.audioContext ? this.audioContext.state : "closed";
+  }
+  schedule() {
+    if (!this.audioContext) return;
+    const t = 0.1, e = this.audioContext.currentTime;
+    for (; this.nextEventIndex < this.events.length; ) {
+      const s = this.events[this.nextEventIndex], n = s.time + this.startTime;
+      if (n < e + t)
+        this.playEvent(s, n), this.nextEventIndex++;
+      else
+        break;
+    }
+  }
+  playEvent(t, e) {
+    if (!this.audioContext) return;
+    const s = this.audioContext.createOscillator();
+    s.type = "triangle", s.frequency.value = t.pitch;
+    const n = this.audioContext.createOscillator();
+    n.type = "sine", n.frequency.value = t.pitch;
+    const r = this.audioContext.createBiquadFilter();
+    r.type = "lowpass", r.frequency.setValueAtTime(t.pitch * 6, e), r.frequency.exponentialRampToValueAtTime(t.pitch * 1.5, e + 0.5);
+    const l = this.audioContext.createGain(), o = this.audioContext.createGain();
+    l.gain.setValueAtTime(0.4, e), l.gain.exponentialRampToValueAtTime(0.01, e + 0.8), o.gain.setValueAtTime(0.4, e), o.gain.exponentialRampToValueAtTime(0.01, e + 1.2);
+    const u = this.audioContext.createGain();
+    u.gain.setValueAtTime(0, e), u.gain.linearRampToValueAtTime(0.8, e + 0.02), u.gain.exponentialRampToValueAtTime(0.4, e + 0.1), u.gain.exponentialRampToValueAtTime(1e-3, e + Math.max(0.5, t.duration)), s.connect(r), r.connect(l), l.connect(u), n.connect(o), o.connect(u), u.connect(this.audioContext.destination), s.start(e), n.start(e);
+    const x = e + Math.max(0.5, t.duration) + 0.2;
+    s.stop(x), n.stop(x), s.onended = () => {
+      u.disconnect();
+    };
+  }
+  // Temporary test method
+  testSound() {
+  }
+}
+class Vt {
+  static hydrate(t) {
+    if (!t) throw new Error("Hydration Input is null/undefined");
+    Object.setPrototypeOf(t, dt.prototype);
+    const e = t;
+    return e.instruments && Array.isArray(e.instruments) && e.instruments.forEach((s) => Object.setPrototypeOf(s, mt.prototype)), e.partGroups && Array.isArray(e.partGroups) && e.partGroups.forEach((s) => Object.setPrototypeOf(s, pt.prototype)), e.sourceMeasures && Array.isArray(e.sourceMeasures) && e.sourceMeasures.forEach((s, n) => {
+      Object.setPrototypeOf(s, gt.prototype), s.clefs && Array.isArray(s.clefs) && s.clefs.forEach((r) => {
+        r && Object.setPrototypeOf(r, St.prototype);
+      }), s.keys && Array.isArray(s.keys) && s.keys.forEach((r) => {
+        r && Object.setPrototypeOf(r, bt.prototype);
+      }), s.rhythms && Array.isArray(s.rhythms) && s.rhythms.forEach((r) => {
+        r && Object.setPrototypeOf(r, Nt.prototype);
+      }), s.notes && Array.isArray(s.notes) && s.notes.forEach((r) => {
+        Object.setPrototypeOf(r, yt.prototype), r.pitch && Object.setPrototypeOf(r.pitch, rt.prototype), r.length && Object.setPrototypeOf(r.length, tt.prototype), r.timestamp && Object.setPrototypeOf(r.timestamp, tt.prototype), r.tuplet && Object.setPrototypeOf(r.tuplet, vt.prototype), r.slurStarts && Array.isArray(r.slurStarts) && r.slurStarts.forEach((l) => Object.setPrototypeOf(l, ht.prototype)), r.tieStarts && Array.isArray(r.tieStarts) && r.tieStarts.forEach((l) => Object.setPrototypeOf(l, ft.prototype));
+      }), s.chordSymbols && Array.isArray(s.chordSymbols) && s.chordSymbols.forEach((r) => {
+        Object.setPrototypeOf(r, Tt.prototype), r.RootPitch && Object.setPrototypeOf(r.RootPitch, rt.prototype), r.BassPitch && Object.setPrototypeOf(r.BassPitch, rt.prototype);
+      });
+    }), e.slurs && Array.isArray(e.slurs) && e.slurs.forEach((s) => Object.setPrototypeOf(s, ht.prototype)), e.ties && Array.isArray(e.ties) && e.ties.forEach((s) => Object.setPrototypeOf(s, ft.prototype)), e.wedges && Array.isArray(e.wedges) && e.wedges.forEach((s) => Object.setPrototypeOf(s, xt.prototype)), e.octaveShifts && Array.isArray(e.octaveShifts) && e.octaveShifts.forEach((s) => Object.setPrototypeOf(s, wt.prototype)), e;
+  }
+}
+function Lt(a) {
+  return new Worker(
+    "/assets/MusicSheetParser.worker-CeM4N2qe.js",
+    {
+      name: a?.name
+    }
+  );
+}
+class Ft {
+  constructor(t, e = {}) {
     if (typeof t == "string") {
-      const r = document.getElementById(t);
-      if (!r) throw new Error("Container element not found");
-      this.container = r;
+      const n = document.getElementById(t);
+      if (!n) throw new Error("Container element not found");
+      this.container = n;
     } else
       this.container = t;
-    this.drawer = new ft(this.container), this.cursor = new pt(this.container);
+    this.drawer = new Mt(this.container), this.cursor = new Ot(this.container, this, e), this.AudioPlayer = new Dt();
+    try {
+      this.parserWorker = new Lt(), this.parserWorker.onmessage = (n) => {
+      };
+    } catch (n) {
+      console.warn("Worker not supported or failed to initialize. Falling back to main thread.", n);
+    }
+    this.container.addEventListener("click", (n) => {
+      this.handleMouseClick(n);
+    });
+    let s;
+    this.container.addEventListener("scroll", () => {
+      s && cancelAnimationFrame(s), s = requestAnimationFrame(() => this.onScroll());
+    }), this.resizeObserver = new ResizeObserver((n) => {
+      this.resizeTimeout && clearTimeout(this.resizeTimeout), this.resizeTimeout = setTimeout(() => {
+        this.onResize();
+      }, 200);
+    }), this.resizeObserver.observe(this.container);
   }
   container;
   drawer;
+  measureBounds;
   sheet;
   graphicalSheet;
+  isDarkMode = !1;
+  _zoom = 1;
+  parserWorker;
+  resizeObserver;
+  resizeTimeout;
+  // Timer ID
   cursor;
+  AudioPlayer;
+  get Sheet() {
+    return this.sheet;
+  }
+  get zoom() {
+    return this._zoom;
+  }
+  set zoom(t) {
+    this._zoom = t, this.render();
+  }
   /**
    * Load a MusicXML file string or MXL ArrayBuffer.
    * @param content The MusicXML string or MXL buffer
    */
   async load(t) {
-    return new Promise(async (r, l) => {
+    return new Promise(async (e, s) => {
       try {
-        let i = "";
-        typeof t == "string" ? (t.startsWith("PK"), i = t) : i = await dt.MXLtoXML(t), this.sheet = ht.readMusicXML(i), r();
-      } catch (i) {
-        l(i);
+        let n = "";
+        typeof t == "string" ? (t.startsWith("PK"), n = t) : n = await It.MXLtoXML(t), this.parserWorker ? (this.parserWorker.onmessage = (r) => {
+          const { success: l, data: o, error: u } = r.data;
+          if (l)
+            try {
+              console.time("Hydration"), this.sheet = Vt.hydrate(o), console.timeEnd("Hydration"), e();
+            } catch (x) {
+              s(x);
+            }
+          else
+            s(new Error(u));
+        }, this.parserWorker.onerror = (r) => {
+          s(r);
+        }, this.parserWorker.postMessage({ xml: n })) : (this.sheet = kt.readMusicXML(n), e());
+      } catch (n) {
+        s(n);
       }
     });
+  }
+  setDarkMode(t) {
+    this.isDarkMode = t, this.container && (this.container.style.backgroundColor = t ? "#222" : ""), this.sheet && this.render();
+  }
+  setCursorOptions(t) {
+    this.cursor.setOptions(t);
   }
   /**
    * Render the loaded sheet music.
@@ -819,13 +1812,96 @@ class yt {
       console.warn("No sheet loaded. Call load() first.");
       return;
     }
-    this.graphicalSheet = new mt(this.sheet);
-    const t = this.container.clientWidth || 1e3, r = _.format(this.graphicalSheet, t), l = this.drawer.draw(r);
-    this.cursor.init(l), this.cursor.show();
+    const t = this.cursor.iteratorIndex, e = this.cursor.hidden;
+    this.graphicalSheet = new Ct(this.sheet);
+    const n = (this.container.clientWidth || 1e3) / this.zoom, { systems: r, curves: l, noteMap: o, metadata: u, partGroups: x } = ut.format(this.graphicalSheet, this.sheet, n - 20);
+    if (this.drawer.prepareLayout({ systems: r, curves: l, partGroups: x, metadata: u }, { darkMode: this.isDarkMode, zoom: this.zoom }), this.measureBounds = /* @__PURE__ */ new Map(), this.sheet) {
+      const N = this.sheet.sourceMeasures;
+      for (let g = 0; g < N.length; g++) {
+        const k = this.drawer.getMeasureBounds(g);
+        k && this.measureBounds.set(g, k);
+      }
+    }
+    this.updateViewportRender(), this.cursor.init(this.sheet, o, this.measureBounds), e ? this.cursor.hide() : (this.cursor.show(), this.cursor.iteratorIndex = t);
+  }
+  onScroll() {
+    this.updateViewportRender();
+  }
+  updateViewportRender() {
+    if (!this.container) return;
+    const t = this.container.scrollTop, e = this.container.clientHeight;
+    this.drawer.render({ top: t, height: e });
+  }
+  onResize() {
+    this.sheet && this.container.clientWidth > 0 && (console.log(`[OSMD] Resize detected. Width: ${this.container.clientWidth}. Re-rendering.`), this.render());
+  }
+  /**
+   * Dispose the OSMD instance to release resources.
+   */
+  dispose() {
+    this.resizeObserver && this.resizeObserver.disconnect(), this.resizeTimeout && clearTimeout(this.resizeTimeout);
+  }
+  /**
+   * Export the current sheet to an Image Data URL (PNG).
+   * @param scale Scaling factor (default 2 for Hi-DPI quality)
+   */
+  async exportToImage(t = 2) {
+    if (!this.container) throw new Error("No container");
+    const e = this.container.querySelector("svg");
+    if (!e) throw new Error("No SVG rendered");
+    const n = new XMLSerializer().serializeToString(e), r = new Blob([n], { type: "image/svg+xml;charset=utf-8" }), l = URL.createObjectURL(r), o = new Image();
+    return o.src = l, new Promise((u, x) => {
+      o.onload = () => {
+        const N = document.createElement("canvas"), g = parseFloat(e.getAttribute("width") || "1000"), k = parseFloat(e.getAttribute("height") || "1000");
+        N.width = g * t, N.height = k * t;
+        const R = N.getContext("2d");
+        if (!R) {
+          x(new Error("Canvas context failed"));
+          return;
+        }
+        R.fillStyle = this.isDarkMode ? "#222" : "#FFF", R.fillRect(0, 0, N.width, N.height), R.scale(t, t), R.drawImage(o, 0, 0, g, k), URL.revokeObjectURL(l);
+        try {
+          const I = N.toDataURL("image/png");
+          u(I);
+        } catch (I) {
+          x(I);
+        }
+      }, o.onerror = (N) => x(N);
+    });
+  }
+  /**
+   * Trigger browser print dialog.
+   */
+  print() {
+    window.print();
+  }
+  /**
+   * Handle mouse click events on the container.
+   * Maps the click coordinates to a measure index and sets the cursor.
+   */
+  handleMouseClick(t) {
+    if (console.log("OSMD.handleMouseClick triggered"), !this.cursor) {
+      console.warn("Cursor is null");
+      return;
+    }
+    if (!this.measureBounds) {
+      console.warn("measureBounds is null/undefined");
+      return;
+    }
+    const e = this.container.getBoundingClientRect();
+    t.clientX - e.left, t.clientY - e.top + this.container.scrollTop;
+    const s = t.clientY - e.top + this.container.scrollTop, n = t.clientX - e.left + this.container.scrollLeft;
+    console.log(`Click at AbsY=${s}, AbsX=${n} (Zoom: ${this.zoom})`);
+    const r = this.drawer.getMeasureAt(n, s, this.zoom);
+    r !== void 0 && (console.log(`Clicked Measure Index: ${r}`), this.cursor.setMeasure && this.cursor.setMeasure(r));
   }
 }
 export {
-  tt as MusicSheet,
-  yt as OpenSheetMusicDisplay,
-  ft as VexFlowMusicSheetDrawer
+  At as CursorType,
+  mt as Instrument,
+  dt as MusicSheet,
+  kt as MusicSheetReader,
+  Ft as OpenSheetMusicDisplay,
+  pt as PartGroup,
+  Mt as VexFlowMusicSheetDrawer
 };

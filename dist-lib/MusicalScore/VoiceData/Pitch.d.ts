@@ -13,4 +13,5 @@ export declare class Pitch {
     octave: number;
     alter: number;
     get Frequency(): number;
+    static transpose(pitch: Pitch, semitones: number): Pitch;
 }

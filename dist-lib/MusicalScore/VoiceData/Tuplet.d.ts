@@ -4,4 +4,6 @@ export declare class Tuplet {
     actualNotes: number;
     normalNotes: number;
     notes: Note[];
+    bracket: boolean;
+    showNumber: boolean;
 }

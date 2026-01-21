@@ -27,7 +27,7 @@ export class OpenSheetMusicDisplay {
         // Initialize Worker
         try {
             this.parserWorker = new MusicSheetParserWorker();
-            this.parserWorker.onmessage = (e) => {
+            this.parserWorker!.onmessage = (e) => {
                 // If we were handling async requests widely, we'd need ID correlation.
                 // For now, load() is a single active operation.
             };

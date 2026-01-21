@@ -24,9 +24,16 @@ export declare class Note {
     tieEnds: Tie[];
     tuplet?: Tuplet;
     isGrace: boolean;
+    graceSlash: boolean;
     isRest: boolean;
     articulations: string[];
     lyrics: Lyric[];
     dynamics: string[];
+    words: string[];
+    accidentalXml?: string;
+    stemDirectionXml?: string;
+    beams: string[];
+    ornaments: string[];
+    printObject: boolean;
     constructor(pitch: Pitch, length: Fraction, durationType?: string, voiceId?: string, timestamp?: Fraction, staffId?: number);
 }
