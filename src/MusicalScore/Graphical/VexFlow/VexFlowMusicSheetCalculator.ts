@@ -6,7 +6,7 @@ import { ClefEnum } from "../../VoiceData/Instructions/ClefInstruction";
 import { BarLineType, EndingType } from "../../VoiceData/SourceMeasure";
 import { WedgeType } from "../../VoiceData/Wedge";
 import { OctaveShiftType } from "../../VoiceData/OctaveShift";
-import { Note } from "../../VoiceData/Note";
+import { Note, ArticulationEnum } from "../../VoiceData/Note";
 import { Tuplet } from "../../VoiceData/Tuplet";
 
 export class VexFlowMusicSheetCalculator {
@@ -265,11 +265,14 @@ export class VexFlowMusicSheetCalculator {
                             // Add Articulations
                             n.articulations.forEach(art => {
                                 let vfArt = "";
-                                if (art === "staccato") vfArt = "a.";
-                                else if (art === "accent") vfArt = "a>";
-                                else if (art === "marcato") vfArt = "a^";
-                                else if (art === "tenuto") vfArt = "a-";
-                                else if (art === "fermata") vfArt = "a@a";
+                                switch (art) {
+                                    case ArticulationEnum.STACCATO: vfArt = "a."; break;
+                                    case ArticulationEnum.STACCATISSIMO: vfArt = "av"; break;
+                                    case ArticulationEnum.ACCENT: vfArt = "a>"; break;
+                                    case ArticulationEnum.STRONG_ACCENT: vfArt = "a^"; break;
+                                    case ArticulationEnum.TENUTO: vfArt = "a-"; break;
+                                    case ArticulationEnum.FERMATA: vfArt = "a@a"; break;
+                                }
 
                                 if (vfArt) {
                                     const modifier = new VF.Articulation(vfArt);
@@ -353,6 +356,18 @@ export class VexFlowMusicSheetCalculator {
                             });
                         }
 
+                        // Add Words (Text Expressions like "Allegro", "dolce")
+                        if (mainNote.words && mainNote.words.length > 0) {
+                            mainNote.words.forEach(word => {
+                                const annotation = new VF.Annotation(word)
+                                    .setFont("Times", 11, "italic") // Basic styling
+                                    .setVerticalJustification(VF.Annotation.VerticalJustify.TOP); // Default to top? XML says placement...
+                                // XML placement is properly better, but for now defaulting TOP for directions is safe-ish.
+                                // Or check XML attributes if we stored them (we didn't store placement in string).
+                                vfNote.addModifier(annotation, 0);
+                            });
+                        }
+
                         // Handle Grace Notes
                         const combinedGraceNotes = [...graceNotesQueue, ...graceNotes];
                         if (combinedGraceNotes.length > 0) {
@@ -407,6 +422,13 @@ export class VexFlowMusicSheetCalculator {
                             // Validated bracket usage
                             const bracketed = logicalTuplet.bracket !== false; // Default true
                             vfTuplet.setBracketed(bracketed);
+                            // vfTuplet.setShowNumber(logicalTuplet.showNumber); // Not supported in this VF version
+
+                            if (logicalTuplet.placement === "above") {
+                                vfTuplet.setTupletLocation(VF.Tuplet.LOCATION_TOP);
+                            } else if (logicalTuplet.placement === "below") {
+                                vfTuplet.setTupletLocation(VF.Tuplet.LOCATION_BOTTOM);
+                            }
                             staffTuplets[s].push(vfTuplet);
                         }
                         processedTuplets.add(logicalTuplet);
@@ -511,8 +533,9 @@ export class VexFlowMusicSheetCalculator {
             }
 
             // Build staves data
-            const stavesData = [];
+            const stavesData: any[] = [];
             const measureBeams: any[] = [];
+            const staffLyricConnectors: { [staffId: number]: any[] } = {};
 
             // GLOBAL BEAMING (Cross-Staff)
             const globalVoiceMap: { [vid: string]: any[] } = {};
@@ -539,10 +562,10 @@ export class VexFlowMusicSheetCalculator {
                     return tA - tB;
                 });
 
-                // Check for XML Beams
+                // 1. Beams Logic
                 let hasXmlBeams = false;
                 let currentBeamGroup: any[] = [];
-
+                // ... (Existing Beam Logic) ...
                 for (const note of notes) {
                     const source = (note as any).sourceNotes ? (note as any).sourceNotes[0] : null;
                     if (source && source.beams && source.beams.length > 0) {
@@ -582,6 +605,38 @@ export class VexFlowMusicSheetCalculator {
                         measureBeams.push(...beams);
                     } catch (e) { }
                 }
+
+                // 2. Lyric Connectors Logic (Hyphens & Extenders)
+                for (let i = 0; i < notes.length - 1; i++) {
+                    const note = notes[i];
+                    const nextNote = notes[i + 1];
+                    const source = (note as any).sourceNotes ? (note as any).sourceNotes[0] : null;
+
+                    if (source && source.lyrics && source.lyrics.length > 0) {
+                        // Hyphens
+                        const lyric = source.lyrics[0]; // Assume 1st verse for now
+                        if (lyric.syllabic === "begin" || lyric.syllabic === "middle") {
+                            // Add Hyphen Connector
+                            const sId = source.staffId - 1;
+                            if (!staffLyricConnectors[sId]) staffLyricConnectors[sId] = [];
+                            staffLyricConnectors[sId].push({
+                                type: "hyphen",
+                                from: note,
+                                to: nextNote
+                            });
+                        }
+                        // Extenders (Single line from this note to next)
+                        if (lyric.extend === "start" || lyric.extend === "continue" || lyric.extend === true) {
+                            const sId = source.staffId - 1;
+                            if (!staffLyricConnectors[sId]) staffLyricConnectors[sId] = [];
+                            staffLyricConnectors[sId].push({
+                                type: "extender",
+                                from: note,
+                                to: nextNote
+                            });
+                        }
+                    }
+                }
             }
 
             for (let s = 0; s <= maxStaffIndex; s++) {
@@ -589,12 +644,28 @@ export class VexFlowMusicSheetCalculator {
                     vfVoices: staffVoices[s],
                     beams: [], // Global Beams are now separate
                     vfTuplets: staffTuplets[s],
+                    lyricConnectors: staffLyricConnectors[s], // Merge here
                     clef: measure.clefs[s] ? currentClefStrs[s] : undefined,
                     keySignature: measure.keys[s] || measure.measureNumber === 1 ? currentKeyStrs[s] : undefined,
                     timeSignature: measure.rhythms[s] ? currentTimeStrs[s] : undefined,
                     voltaType: s === 0 ? voltaType : VF.Volta.type.NONE,
                     voltaNumber: s === 0 ? measure.endingNumber : "",
                     label: measure.measureNumber === 1 ? staffInstrumentLabels[s] : undefined,
+
+                    // Directions (Tempo & Rehearsal) - Only on Top Staff (typically)
+                    tempos: s === 0 ? measure.tempos : [],
+                    rehearsalMarks: s === 0 ? measure.rehearsalMarks : [],
+
+                    // Piano Polish (Pedal & Octave Shift)
+                    // Pedals usually on bottom staff (or specific staff from XML)
+                    // Currently Reader puts all in measure.pedals. We can attach to bottom staff or pass all.
+                    // For now, attaching to the specific staff would be best if we parsed <staff>.
+                    // Reader didn't parse <staff> for pedal yet (default 1?). Let's put on LAST staff?
+                    // Or just pass to all and let Drawer filter?
+                    // Let's pass to current staff. Drawer can check if empty.
+                    pedals: measure.pedals, // Passing to all, drawer logic can filter by staff index if we had it.
+                    // But we don't have staff index in Parse. So just render on Bottom Staff (typical)?
+                    octaveShifts: measure.octaveShifts.filter((o: any) => o.staffId === s + 1), // ONE-BASED INDEX Match
 
                     // Layout Distances (Pass through from SourceMeasure)
                     systemDistance: measure.systemDistance,

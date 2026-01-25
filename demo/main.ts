@@ -25,6 +25,7 @@ import tupletsTestUrl from "./tuplets_test.musicxml?url";
 import repeatsTestUrl from "./repeats_test.musicxml?url";
 import lyricsTestUrl from "./lyrics_test.musicxml?url";
 import multivoiceTestUrl from "./multivoice_test.musicxml?url";
+import crossStaffTestUrl from "./cross_staff_test.musicxml?url";
 
 const builtInXML = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
@@ -134,6 +135,11 @@ if (container && selectElement) {
         { name: "Chord Symbols Test", value: "chords", url: "/demo/chords_test.musicxml?url" },
         { name: "Virtual Rendering Test (100 msrs)", value: "virtual_test", url: "/demo/virtual_test.musicxml?url" },
         { name: "Grace Notes Test", value: "grace_note_test", url: "/demo/grace_note_test.musicxml?url" },
+        { name: "Articulations Test", value: "articulations_test", url: "/demo/articulations_test.musicxml?url" },
+        { name: "Text & Tempo Test", value: "text_tempo_test", url: "/demo/text_tempo_test.musicxml?url" },
+        { name: "Lyrics & Ties Test", value: "lyrics_ties_test", url: "/demo/lyrics_ties_test.musicxml?url" },
+        { name: "Piano Polish Test", value: "piano_polish_test", url: "/demo/piano_polish_test.musicxml?url" },
+        { name: "Cross Staff Polish Test", value: "cross_staff_test", url: crossStaffTestUrl },
         { name: "OSMD Function Test All", value: "function_test", url: functionTestUrl }
     ];
 

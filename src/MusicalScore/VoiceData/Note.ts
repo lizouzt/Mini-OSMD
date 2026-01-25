@@ -4,9 +4,19 @@ import { Slur } from "./Slur";
 import { Tuplet } from "./Tuplet";
 import { Tie } from "./Tie";
 
+export enum ArticulationEnum {
+    STACCATO,
+    STACCATISSIMO,
+    ACCENT,
+    STRONG_ACCENT,
+    TENUTO,
+    FERMATA
+}
+
 export interface Lyric {
     text: string;
     syllabic: string;
+    extend?: string; // "start", "stop", "continue"
 }
 
 export class Note {
@@ -31,7 +41,7 @@ export class Note {
     public isGrace: boolean = false;
     public graceSlash: boolean = false;
     public isRest: boolean = false;
-    public articulations: string[] = []; // e.g. "staccato", "accent", "fermata"
+    public articulations: ArticulationEnum[] = []; // e.g. STACCATO, ACCENT
     public lyrics: Lyric[] = []; // Changed from single lyric
     public dynamics: string[] = []; // e.g. "p", "f", "mf"
     public words: string[] = []; // e.g. "Allegro", "crescendo" (text)

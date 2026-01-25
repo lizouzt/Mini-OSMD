@@ -344,6 +344,21 @@ export class VexFlowMusicSheetDrawer {
                     if (vfStave) {
                         this.ctx.setFillStyle(color);
                         this.ctx.setStrokeStyle(color);
+                        // Add Tempos (Metronome) - Before Draw!
+                        if ((staffData as any).tempos) {
+                            (staffData as any).tempos.forEach((t: any) => {
+                                const tempo = new VF.StaveTempo({ bpm: t.bpm, duration: "q" }, 0, 0);
+                                vfStave.addModifier(tempo);
+                            });
+                        }
+                        // Add Rehearsal Marks - Before Draw!
+                        if ((staffData as any).rehearsalMarks) {
+                            (staffData as any).rehearsalMarks.forEach((mark: string) => {
+                                const section = new VF.StaveSection(mark, vfStave.getX(), 0);
+                                vfStave.addModifier(section);
+                            });
+                        }
+
                         vfStave.setContext(this.ctx).draw();
                         vfStaves.push(vfStave);
 
@@ -389,6 +404,121 @@ export class VexFlowMusicSheetDrawer {
                         try { beam.setContext(this.ctx).draw(); } catch (e) { }
                     });
                 }
+
+                // 4. Lyric Connectors
+                staves.forEach((staffData: any) => {
+                    if ((staffData as any).lyricConnectors) {
+                        (staffData as any).lyricConnectors.forEach((conn: any) => {
+                            const fromNote = conn.from;
+                            const toNote = conn.to;
+                            if (!fromNote || !toNote) return;
+
+                            const startX = fromNote.getAbsoluteX();
+                            const endX = toNote.getAbsoluteX();
+                            const stave = fromNote.getStave();
+                            if (!stave) return;
+
+                            // Estimate Y position (Lyric Annotation BOTTOM usually puts it around +25)
+                            const y = stave.getBottomLineY() + 25;
+
+                            this.ctx.save();
+                            this.ctx.setFillStyle(color);
+                            this.ctx.setStrokeStyle(color);
+                            this.ctx.setLineWidth(1);
+                            this.ctx.setFont("Times New Roman", 12, "");
+
+                            if (conn.type === "hyphen") {
+                                const midX = (startX + endX) / 2;
+                                this.ctx.fillText("-", midX, y);
+                            } else if (conn.type === "extender") {
+                                const lineStartX = startX + 15; // approximate text width offset
+                                const lineEndX = endX - 5;
+                                if (lineEndX > lineStartX) {
+                                    this.ctx.beginPath();
+                                    this.ctx.moveTo(lineStartX, y - 4); // Slightly up
+                                    this.ctx.lineTo(lineEndX, y - 4);
+                                    this.ctx.stroke();
+                                }
+                            }
+                            this.ctx.restore();
+                        });
+                    }
+                });
+
+                // 5. Piano Polish (Pedals & Octave Shifts)
+                staves.forEach((staffData: any) => {
+                    if ((staffData as any).pedals && (staffData as any).pedals.length > 0) {
+                        try {
+                            const pedals = (staffData as any).pedals;
+                            const allNotes = (staffData as any).tempAllNotes || [];
+                            if (allNotes.length > 0) {
+                                pedals.forEach((p: any) => {
+                                    let text = "";
+                                    let style = "italic";
+                                    if (p.type === "start") text = "Ped.";
+                                    else if (p.type === "stop") text = "*";
+                                    else if (p.type === "change") text = "*Ped.";
+
+                                    if (text) {
+                                        const t = p.timestamp.RealValue;
+                                        let targetNote = allNotes[0];
+                                        let minDiff = 999;
+                                        for (const n of allNotes) {
+                                            const nt = (n as any).sourceNotes[0]?.timestamp.RealValue || 0;
+                                            const diff = Math.abs(nt - t);
+                                            if (diff < minDiff) {
+                                                minDiff = diff;
+                                                targetNote = n;
+                                            }
+                                        }
+
+                                        const x = targetNote.getAbsoluteX();
+                                        const stave = targetNote.getStave();
+                                        const y = stave.getBottomLineY() + 40;
+                                        this.ctx.save();
+                                        this.ctx.setFont("Times New Roman", 12, "italic");
+                                        this.ctx.fillText(text, x - 5, y);
+                                        this.ctx.restore();
+                                    }
+                                });
+                            }
+                        } catch (e) {
+                            console.warn("Pedal render error", e);
+                        }
+                    }
+
+                    if ((staffData as any).octaveShifts && (staffData as any).octaveShifts.length > 0) {
+                        const octaveShifts = (staffData as any).octaveShifts;
+                        const allNotes = (staffData as any).tempAllNotes || [];
+                        if (allNotes.length > 0) {
+                            octaveShifts.forEach((shift: any) => {
+                                if (shift.type === "up" || shift.type === "down") {
+                                    const text = shift.size === 15 ? "15ma" : "8va";
+                                    const t = shift.timestamp.RealValue;
+                                    let targetNote = allNotes[0];
+                                    let minDiff = 999;
+                                    for (const n of allNotes) {
+                                        const nt = (n as any).sourceNotes[0]?.timestamp.RealValue || 0;
+                                        const diff = Math.abs(nt - t);
+                                        if (diff < minDiff) {
+                                            minDiff = diff;
+                                            targetNote = n;
+                                        }
+                                    }
+
+                                    const x = targetNote.getAbsoluteX();
+                                    const stave = targetNote.getStave();
+                                    const y = stave.getYForTopText(2);
+
+                                    this.ctx.save();
+                                    this.ctx.setFont("Times New Roman", 12, "italic");
+                                    this.ctx.fillText(text, x, y);
+                                    this.ctx.restore();
+                                }
+                            });
+                        }
+                    }
+                });
 
                 // 4. Connectors
                 // Check if this is the first measure (x === startX)

@@ -60,7 +60,11 @@ export class SourceMeasure {
         } | undefined;
     } | undefined;
 
+    public tempoInBPM: number = 0; // Legacy
     public tempos: { timestamp: Fraction, bpm: number }[] = [];
+    public rehearsalMarks: string[] = []; // Rehearsal Marks (e.g. "A", "B", "1")
+    public pedals: { type: string, line: boolean, timestamp: Fraction }[] = [];
+    public octaveShifts: { type: string, size: number, number: number, timestamp: Fraction, staffId: number }[] = [];
 
     public addNote(note: Note): void {
         this.notes.push(note);

@@ -11,4 +11,5 @@ export class Tuplet {
     public notes: Note[] = [];
     public bracket: boolean = true; // Default to true (or better: undefined?)
     public showNumber: boolean = true; // Default to true
+    public placement: string | undefined; // "above" | "below"
 }

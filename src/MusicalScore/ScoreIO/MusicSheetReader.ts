@@ -1,6 +1,6 @@
 import { MusicSheet, Instrument, PartGroup } from "../MusicSheet";
 import { SourceMeasure, BarLineType, EndingType } from "../VoiceData/SourceMeasure";
-import { Note } from "../VoiceData/Note";
+import { Note, ArticulationEnum } from "../VoiceData/Note";
 import { Pitch, NoteEnum } from "../VoiceData/Pitch";
 import { Fraction } from "../../Common/DataObjects/Fraction";
 import { ClefInstruction, ClefEnum } from "../VoiceData/Instructions/ClefInstruction";
@@ -402,15 +402,56 @@ export class MusicSheetReader {
                                     activeWedge = undefined;
                                 }
                             }
+
+                            // Pedal
+                            const pedal = type.getElementsByTagName("pedal")[0];
+                            if (pedal) {
+                                const typeAttr = pedal.getAttribute("type") || "start";
+                                const lineAttr = pedal.getAttribute("line") === "yes";
+                                measure.pedals.push({
+                                    type: typeAttr,
+                                    line: lineAttr,
+                                    timestamp: lastNoteTimestamp.clone()
+                                });
+                            }
+
                             // Octave Shift
                             const octaveShift = type.getElementsByTagName("octave-shift")[0];
                             if (octaveShift) {
-                                const oType = octaveShift.getAttribute("type");
-                                if (oType === "up" || oType === "down") {
-                                    activeOctaveShift = new OctaveShift(oType === "up" ? OctaveShiftType.Up : OctaveShiftType.Down);
-                                    sheet.octaveShifts.push(activeOctaveShift);
-                                } else if (oType === "stop") {
-                                    activeOctaveShift = undefined;
+                                const typeAttr = octaveShift.getAttribute("type") || "up";
+                                const sizeAttr = parseInt(octaveShift.getAttribute("size") || "8");
+                                const numberAttr = parseInt(octaveShift.getAttribute("number") || "1");
+                                let staffId = 1;
+                                const staffTag = child.getElementsByTagName("staff")[0];
+                                if (staffTag) staffId = parseInt(staffTag.textContent || "1");
+
+                                measure.octaveShifts.push({
+                                    type: typeAttr,
+                                    size: sizeAttr,
+                                    number: numberAttr,
+                                    timestamp: lastNoteTimestamp.clone(),
+                                    staffId: staffId
+                                });
+                            }
+
+                            // Metronome
+                            const metronome = type.getElementsByTagName("metronome")[0];
+                            if (metronome) {
+                                const perMinute = metronome.getElementsByTagName("per-minute")[0];
+                                if (perMinute) {
+                                    const bpm = parseFloat(perMinute.textContent || "0");
+                                    if (bpm > 0) {
+                                        measure.tempos.push({ timestamp: lastNoteTimestamp.clone(), bpm: bpm });
+                                    }
+                                }
+                            }
+
+                            // Rehearsal Marks
+                            const rehearsal = type.getElementsByTagName("rehearsal")[0];
+                            if (rehearsal) {
+                                const text = rehearsal.textContent;
+                                if (text) {
+                                    measure.rehearsalMarks.push(text);
                                 }
                             }
                         }
@@ -458,10 +499,6 @@ export class MusicSheetReader {
                             if (activeWedge) {
                                 if (!activeWedge.startNote) activeWedge.startNote = note;
                                 activeWedge.endNote = note;
-                            }
-                            if (activeOctaveShift) {
-                                if (!activeOctaveShift.startNote) activeOctaveShift.startNote = note;
-                                activeOctaveShift.endNote = note;
                             }
 
                             // Notations
@@ -519,6 +556,9 @@ export class MusicSheetReader {
 
                                             const showNumberAttr = tuplet.getAttribute("show-number");
                                             if (showNumberAttr === "none") activeTuplet.showNumber = false;
+
+                                            const placementAttr = tuplet.getAttribute("placement");
+                                            if (placementAttr) activeTuplet.placement = placementAttr;
                                         }
                                     }
 
@@ -536,12 +576,12 @@ export class MusicSheetReader {
                                 // Articulations
                                 const arts = notations.getElementsByTagName("articulations")[0];
                                 if (arts) {
-                                    if (arts.getElementsByTagName("staccato").length > 0) note.articulations.push("staccato");
-                                    if (arts.getElementsByTagName("accent").length > 0) note.articulations.push("accent");
-                                    if (arts.getElementsByTagName("strong-accent").length > 0) note.articulations.push("marcato");
-                                    if (arts.getElementsByTagName("tenuto").length > 0) note.articulations.push("tenuto");
+                                    if (arts.getElementsByTagName("staccato").length > 0) note.articulations.push(ArticulationEnum.STACCATO);
+                                    if (arts.getElementsByTagName("accent").length > 0) note.articulations.push(ArticulationEnum.ACCENT);
+                                    if (arts.getElementsByTagName("strong-accent").length > 0) note.articulations.push(ArticulationEnum.STRONG_ACCENT);
+                                    if (arts.getElementsByTagName("tenuto").length > 0) note.articulations.push(ArticulationEnum.TENUTO);
                                 }
-                                if (notations.getElementsByTagName("fermata").length > 0) note.articulations.push("fermata");
+                                if (notations.getElementsByTagName("fermata").length > 0) note.articulations.push(ArticulationEnum.FERMATA);
 
                                 // Ornaments
                                 const ornaments = notations.getElementsByTagName("ornaments")[0];
