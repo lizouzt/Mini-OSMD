@@ -54,7 +54,8 @@ fork 专属提交只有三类，各自独立成提交，方便合并时识别：
 
 - Node：ESLint 10 要求 Node ≥ 20.19 / 22.13 / 24，上游 CI 用 Node 24。
 - `npm install` 会触发 `prepare`（husky + `npm run build`，其中 build = lint + webpack），首次安装较慢。
-- 单元测试：`npm test`（Karma + Mocha，浏览器是 **FirefoxHeadless**，环境里需要装 Firefox）。测试文件放在 `test/**`，用 chai 断言，可参考 `test/MusicalScore/ScoreIO/MusicSheetReader_Test.ts`。
+- 单元测试：`npm test`（Karma + Mocha，浏览器是 **FirefoxHeadless**，环境里需要装 Firefox）。测试文件放在 `test/**`，用 chai 断言，可参考 `test/MusicalScore/ScoreIO/MusicSheetReader_Test.ts`。没有 Firefox、只有 Chrome 时，改用 Karma 配置里自带的启动器：`CHROME_BIN=$(which google-chrome) npx karma start --single-run --no-auto-watch --browsers ChromeHeadlessNoSandbox`。
+- 已验证的基线（2026-10-15，fork `develop` 提交 a308225，Node 22.14）：`npm install`（含 lint 与 webpack 构建）约 44 秒成功；用 ChromeHeadlessNoSandbox 跑单元测试，753 个全部通过，约 11 秒；`generateImages_browserless.mjs` 可以正常出 PNG。
 - 代码风格：`npm run lint`。
 - 视觉回归：`npm run test:visual:build`。它依赖 devDependency `canvas`，生成到 `visual_regression/current`，与 `visual_regression/blessed` 比对。基线用 `npm run generate:blessed` 在**未改动的** `develop` 上生成。
 - `generateImages_browserless.mjs` 的第二个参数是样例目录，可以只对我们的新文件出图：`node ./test/Util/generateImages_browserless.mjs ../../build ./test/data ./export png 0 0 ^test_mxl4`（最后一个参数是文件名正则）。
