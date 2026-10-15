@@ -1,17 +1,5 @@
 import { OpenSheetMusicDisplay, CursorType } from "../src/index";
 // @ts-ignore
-import beethovenUrl from '/demo/Beethoven_AnDieFerneGeliebte.xml?url';
-// @ts-ignore
-import brahmsUrl from '/demo/BrahWiMeSample.musicxml?url';
-// @ts-ignore
-import debussyUrl from '/demo/Debussy_Mandoline.xml?url';
-// @ts-ignore
-import dichterliebeUrl from '/demo/Dichterliebe01.xml?url';
-// @ts-ignore
-import parlezUrl from '/demo/Parlez-moi.mxl?url';
-// @ts-ignore
-import saltarelloUrl from '/demo/Saltarello.mxl?url';
-// @ts-ignore
 import multirestUrl from '/demo/Test_Auto_Multirest_2.musicxml?url';
 // @ts-ignore
 import slursUrl from '/demo/test_slurs_highNotes.musicxml?url';
@@ -105,12 +93,6 @@ if (container && selectElement) {
 
     const scores = [
         { name: "Built-in Test (Ultimate)", value: "builtin", url: "" },
-        { name: "Beethoven: An die ferne Geliebte", value: "beethoven", url: beethovenUrl },
-        { name: "Brahms: Wie Melodien zieht es mir", value: "brahms", url: brahmsUrl },
-        { name: "Debussy: Mandoline", value: "debussy", url: debussyUrl },
-        { name: "Schumann: Dichterliebe 01", value: "dichterliebe", url: dichterliebeUrl },
-        { name: "Parlez-moi", value: "parlez", url: parlezUrl },
-        { name: "Saltarello", value: "saltarello", url: saltarelloUrl },
         { name: "Test Auto Multirest", value: "multirest", url: multirestUrl },
         { name: "Test Slurs High Notes", value: "slurs", url: slursUrl },
         { name: "OSMD Function Test All", value: "function_test", url: functionTestUrl }
