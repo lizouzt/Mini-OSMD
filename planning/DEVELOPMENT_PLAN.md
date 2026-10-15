@@ -16,7 +16,7 @@
 1. **git fork，不拷贝。** 必须保留上游完整历史，以便持续合并上游更新、向上游提 PR。
 2. **最小侵入。** 不重命名、不移动、不重新格式化上游已有代码；不做与当前特性无关的改动。新逻辑尽量放在新文件或新方法里，在原有代码里只加必要的调用。
 3. **许可证。** 上游是 BSD-3-Clause（Copyright 2019 PhonicScore）。保留其 `LICENSE` 原文；我们新增的代码同样用 BSD-3-Clause，方便合并进上游。不得以 PhonicScore 或 OSMD 贡献者的名义为我们的发布物背书；发布名称不得暗示是官方版本。
-4. **乐谱文件准入。** 严格执行同目录下的 `SAMPLE_COPYRIGHT_AUDIT.md`：没有正面授权证据的文件一律不收录，已有的直接移除。
+4. **乐谱文件准入。** 只对**我们对外发布的内容**和**我们新增或修改的乐谱文件**执行同目录下 `SAMPLE_COPYRIGHT_AUDIT.md` 的规则：没有正面授权证据就不收录。对外发布的内容包括 npm 包、公开 demo 网站、截图和图片。上游的测试数据（`test/data`、`demo/` 中与 `upstream/develop` 完全一致的文件）原样保留，不逐个核查、不删除、不修改，详见阶段 1。
 5. **禁止事项。** 不得强制推送、改写共享分支历史、合并或关闭任何 PR，除非仓库所有者明确授权。
 
 ## 2. 人工前置事项（Agent 无法代办）
@@ -39,12 +39,12 @@ origin   = https://github.com/lizouzt/opensheetmusicdisplay.git   （H1 创建�
 | 分支 | 内容 | 规则 |
 |---|---|---|
 | `develop` | 与 `upstream/develop` 完全一致 | 只做 fast-forward 同步，永远不提交 |
-| `feat/mxl4-<特性>` | 从最新 `upstream/develop` 切出，只含一个特性 | 用来向上游提 PR；不得包含合规删除、发布配置等 fork 专属改动 |
+| `feat/mxl4-<特性>` | 从最新 `upstream/develop` 切出，只含一个特性 | 用来向上游提 PR；不得包含发布合规配置、发布配置等 fork 专属改动 |
 | `release`（fork 默认分支） | `upstream/develop` + 我们的特性 + fork 专属提交 | 对外发布用；定期 `git merge upstream/develop` |
 
 fork 专属提交只有三类，各自独立成提交，方便合并时识别：
 
-- 阶段 1 的合规删除；
+- 阶段 1 的发布合规配置（发布样例清单、检查脚本、fork 专属 demo 构建）；
 - 发布配置（包名、README、NOTICE、CI）；
 - 尚未被上游合并的特性分支的 merge 提交。
 
@@ -82,19 +82,47 @@ xmllint --noout --schema /tmp/w3c-musicxml/schema/musicxml.xsd test/data/test_mx
 
 **验收**：`release` 与 `upstream/develop` 只差文档提交；基线测试结果已记录。
 
-### 阶段 1：fork 内乐谱文件合规清理（只在 `release` 分支）
+### 阶段 1：发布内容的乐谱合规（只在 `release` 分支）
 
-1. 写脚本 `tools/audit-samples.mjs`，遍历 `test/data`、`demo/` 及其他目录下所有 `.xml/.musicxml/.mxl`（`.mxl` 需要解压读取 rootfile），输出 `fork-docs/sample-audit.csv`，列包括：文件名、`<rights>`、`<creator>`、`<source>`、`<software>`、含版权字样的 `<credit-words>`、首次提交人和日期（`git log --diff-filter=A --format='%an %ad' -- <file>`）、被哪些测试和 demo 引用、SHA-256。
-2. 按核查文档的 A/B/C 规则逐个判定，写入 CSV 的"等级""依据"两列。预扫描结论见核查文档第 4 节：Recordare 版权文件、"All rights reserved" 文件、musescore.com 来源文件都是重点。现代流行作品（即使元数据为空）按 B 处理。
-3. 在**一个独立提交**里删除全部 B/C 文件，并处理引用：
-   - 单元测试：引用被删文件的用例（预扫描至少 7 个引用 Recordare 文件）要么改用 A 级文件重写断言，要么用 Mocha 的 `it.skip` 跳过，并在注释里写明"样例因版权移除"。不得删除上游的测试逻辑本身。
-   - demo 的样例下拉列表：删除对应条目。
-   - 视觉回归基线：删除对应图片后重新生成 blessed。
-4. 增加 `tools/check-samples.mjs` 并加入 fork 的 CI：仓库里任何乐谱文件如果不在 `fork-docs/sample-audit.csv` 中被登记为 A 级，或者 SHA-256 对不上，CI 就失败。
-5. 上游以后新增的样例文件在合并进 `release` 时会被这个检查拦下，按同样流程核查。
-6. 这些改动**绝不进入** `feat/mxl4-*` 分支或上游 PR。
+**范围。**
 
-**验收**：`check-samples` 通过；`npm test` 与基线相比，除明确跳过的用例外没有新增失败；B/C 文件清单与删除提交一致。
+- **上游数据**：路径和内容都与 `upstream/develop` 完全一致的乐谱文件（主要在 `test/data`、`demo/`）。这些文件原样保留，不逐个核查、不删除、不修改，上游的单元测试和视觉回归照常使用它们。同步上游时新进来的文件同样属于上游数据。
+- **必须核查的内容**：
+  - npm 包；
+  - 公开部署的 demo 网站；
+  - 我们发布的截图和图片，包括 README、文档、PR 描述、公开的视觉回归结果；
+  - 我们新增或修改的乐谱文件，包括提交给上游的测试文件。
+
+  这些内容按 `SAMPLE_COPYRIGHT_AUDIT.md` 的 A/B/C 规则处理，只有 A 级文件可以用。
+
+**步骤。**
+
+1. 在 fork 的 README 里写明：`test/data` 和 `demo/` 中的乐谱样例来自上游 OSMD 仓库，仅用于测试；它们的版权归各自权利人所有，不属于本项目的发布内容，也不在本项目许可证的覆盖范围内。
+2. 建立发布样例清单 `fork-docs/release-samples.csv`，列包括：文件路径、来源、作者 / 首次提交（`git log --diff-filter=A --format='%an %ad' -- <file>`）、等级、判定依据、许可、SHA-256。
+   - 初始内容只放两类：公开 demo 需要的少量样例（优先选 OSMD 团队自制的 `OSMD_function_test_*`、`test_*` 文件，逐个按规则确认），以及我们新增的 `test_mxl4_*` 文件。
+   - 只有清单里的文件才能出现在发布内容里。
+3. 公开 demo 不能直接部署上游的 demo 或开发服务器：
+   - 上游 `webpack.common.js` 第 61–62 行把整个 `test/data` 挂到 `/samples`；
+   - 上游 `demo/` 里有 `BrahWiMeSample.musicxml`（MakeMusic 版权）和 `BrookeWestSample.musicxml`（Jonatha Brooke 的现代作品）。
+
+   做法是新建 fork 专属的 demo 构建，放在 `fork-demo/`。它只复制清单里的文件，样例下拉列表也由清单生成。不修改上游的 `demo/` 和 webpack 配置。
+4. 增加 `tools/check-release-samples.mjs` 并加入 fork 的 CI，满足以下任一条件就失败：
+   - `git diff --name-status upstream/develop...HEAD` 中新增或修改的 `.xml/.musicxml/.mxl` 文件不在清单里，或 SHA-256 对不上；
+   - `npm pack --dry-run --json` 列出的文件里有乐谱文件；
+   - fork 专属 demo 的构建产物里有不在清单中、或 SHA-256 对不上的乐谱文件。
+5. 截图规则：
+   - 我们发布的图片只能用清单里的文件生成；
+   - 给上游提 PR 时，上游样例的视觉回归结果用文字说明（例如"N 个文件零差异，M 个文件有预期差异：文件名……"），不贴这些样例的渲染图；
+   - 只贴我们自己的 `test_mxl4_*` 文件的截图。
+6. 这些改动**绝不进入** `feat/mxl4-*` 分支或上游 PR。提交给上游的新测试文件本身要按 A 级要求编写，并登记在清单里。
+
+**验收**：
+
+- `check-release-samples` 通过；
+- `git diff --diff-filter=DMR upstream/develop...HEAD -- test/data demo` 为空：上游原有样例没有被删除、修改或重命名，我们只新增 `test_mxl4_*` 文件；
+- `npm test` 结果与阶段 0 的基线一致；
+- fork 专属 demo 的构建产物里只有清单中的乐谱文件；
+- README 已写明测试数据的来源声明。
 
 ### 阶段 2：4.0 / 4.1 支持现状矩阵
 
@@ -138,7 +166,7 @@ xmllint --noout --schema /tmp/w3c-musicxml/schema/musicxml.xsd test/data/test_mx
 
 ### 阶段 4：回归与兼容
 
-1. 在全部 A 级样例和全部 `test_mxl4_*` 文件上跑视觉回归，确认没有意外差异。
+1. 在上游全部 `test/data` 样例和全部 `test_mxl4_*` 文件上跑视觉回归，确认没有意外差异。这些结果只在内部比对，对外只发布文字结论和清单内文件的图片（见阶段 1 第 5 步）。
 2. 准备一组 4.0 真实导出文件来验证兼容性：只能用我们自己在 MuseScore 4、Dorico、Sibelius、Finale 里新建并导出的文件，内容必须是自写的旋律或公有领域旋律（且由我们自行录入），按 A 级登记；不要直接下载别人的乐谱文件。
 3. 性能：选一个大乐谱，对比改动前后的加载和渲染时间（上游有 `test/performance` 可参考），回退不超过 5%。
 
@@ -150,11 +178,11 @@ xmllint --noout --schema /tmp/w3c-musicxml/schema/musicxml.xsd test/data/test_mx
 
 ### 阶段 6：开源发布（fork 的 `release` 分支）
 
-1. README：说明项目基于 OSMD、与上游的关系、MusicXML 4.0 / 4.1 支持矩阵链接；不得暗示是官方版本。
+1. README：说明项目基于 OSMD、与上游的关系、MusicXML 4.0 / 4.1 支持矩阵链接，并包含阶段 1 的测试数据来源声明；不得暗示是官方版本。
 2. `LICENSE` 保留上游原文，另加我们的版权行；`THIRD_PARTY_NOTICES.md` 列出 OSMD（BSD-3）、VexFlow（MIT）、jszip（MIT，选用其 MIT 许可）、loglevel（MIT）、typescript-collections（MIT），以及 W3C 派生测试文件的归属声明。
 3. npm 包名使用 H4 确定的名字。上游 `package.json` 的 `files` 字段只包含 `build/dist/src`、`build/opensheetmusicdisplay.min.js`、`AUTHORS`、`CHANGELOG.md`、`README.md`、`external`，不含 `test/data`；保持这一点，并用 `npm pack --dry-run` 确认包里没有乐谱文件。
-4. 公开 demo 只能使用 A 级文件。
-5. fork 的 CI 跑：lint、`npm test`、`check-samples`、新测试文件的 XSD 校验、视觉回归。
+4. 公开 demo 只能用阶段 1 的 fork 专属 demo 构建，样例只来自 `fork-docs/release-samples.csv`；不得直接部署上游 demo 或开发服务器。
+5. fork 的 CI 跑：lint、`npm test`、`check-release-samples`、新测试文件的 XSD 校验、视觉回归。
 6. 完成 H2 / H3 后，在 Mini-OSMD 的 README 顶部指向新项目。
 
 ## 6. 初步现状（grep 结果，阶段 2 必须实测确认）
@@ -180,11 +208,12 @@ xmllint --noout --schema /tmp/w3c-musicxml/schema/musicxml.xsd test/data/test_mx
 | OSMD 用的是打过补丁的 VexFlow 1.2.93（`src/VexFlowPatch`），新符号可能需要修改补丁 | 修改补丁时遵循上游 `prebuildVexflow` 的机制，不要升级 VexFlow |
 | 测试环境依赖 FirefoxHeadless 和 node-canvas | 阶段 0 先把环境配好，并记录安装步骤 |
 | 4.1 仍是草案，可能变化 | WP-7 最后做；PR 描述里写明草案状态 |
-| 乐谱版权判断有误 | 严格执行"证据不足即移除"；发布前请法务复核 `fork-docs/sample-audit.csv` |
+| 乐谱版权判断有误 | 发布内容严格执行"证据不足即不收录"；发布前请法务复核 `fork-docs/release-samples.csv` |
+| 上游测试数据被权利人投诉 | 我们不主动分发这些文件（npm 包和公开 demo 里都没有）；如果收到 GitHub DMCA 通知，按通知要求处理，同时告知上游 |
 
 ## 8. 完成定义
 
 - 支持矩阵中 4.0 的每一项都是"完整支持"，或者有明确理由标为"仅数据"或"不支持"；4.1 草案各项都有结论。
 - 每个工作包都有：测试文件（通过 XSD 校验）、单元测试、视觉回归证据、上游 PR 链接（或"仅 fork"的说明）。
-- fork 的 `release` 分支 CI 全绿，`check-samples` 通过，`npm pack --dry-run` 中没有乐谱文件。
+- fork 的 `release` 分支 CI 全绿，`check-release-samples` 通过，`npm pack --dry-run` 中没有乐谱文件，上游原有样例没有被删除或修改。
 - 发布物包含完整的许可证与第三方声明。

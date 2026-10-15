@@ -1,6 +1,13 @@
 # 乐谱样例版权核查
 
-核查日期：2026-10-15。本文件既是本仓库的核查记录，也是后续所有乐谱文件（示例、测试数据、文档截图来源）的准入规则。执行开发计划的 Agent 必须遵守。
+核查日期：2026-10-15。本文件既是本仓库的核查记录，也是后续乐谱文件的准入规则。执行开发计划的 Agent 必须遵守。
+
+**适用范围。** 规则适用于以下两类内容：
+
+- 我们对外发布的内容：npm 包、公开 demo 网站、截图和图片；
+- 我们新增或修改的乐谱文件。
+
+在 OSMD fork 中，上游原有的测试数据（与 `upstream/develop` 完全一致的文件）原样保留，不适用本规则，也不逐个核查。具体见 `DEVELOPMENT_PLAN.md` 阶段 1。
 
 > 这是基于公开信息的技术核查，不构成法律意见。正式发布前建议由法务复核。
 
@@ -48,16 +55,23 @@
 1. **git 历史。** 被移除的文件仍存在于本仓库 `main` 的历史提交以及远端分支 `feat/phase10` 中，且本仓库是公开的。只删除最新版本并不能让它们从公开仓库消失。若要彻底清除，需要用 `git filter-repo --invert-paths --path public/demo/<文件> --path dist-lib/demo/<文件>` 重写全部分支历史并强制推送，这会改变所有提交哈希。是否执行由仓库所有者决定，Agent 不得自行强制推送。
 2. **GitHub Pages。** `npm run deploy` 曾可能把含这些文件的 `dist/` 发布到 `gh-pages`。远端目前没有 `gh-pages` 分支，如有其他部署位置需人工确认并清理。
 
-## 4. 上游 OSMD `test/data` 预扫描（供 fork 阶段使用）
+## 4. 上游 OSMD 测试数据（不核查，仅作参考）
 
-基于 OSMD `develop`（提交 a308225）`test/data` 的自动扫描，仅统计 `<rights>` 字段，结果只用于分流，最终结论必须逐文件核查：
+经仓库所有者决定，fork 中上游原有的 `test/data` 和 `demo/` 样例**原样保留，不逐个核查、不删除**，原因如下：
 
-- 乐谱文件共 438 个（含 16 个 `.mxl`）；
-- 406 个没有 `<rights>` 字段：多数看起来是 OSMD 自制测试文件，但必须结合提交历史与内容逐个确认，确认不了的按 C 处理；
-- 11 个声明 Recordare LLC 版权：判 B，其中 7 个被单元测试引用；
-- 明确 "All rights reserved" 的第三方作品：至少 "© 2004 Polygames"、"© 1995 Dog Dream Music"，判 B；
-- 12 个 `<rights>` 只有 "Copyright ©" 而无权利人：需查来源；
-- 声明 CC0 / Public Domain：3 个（"OpenScore (CC0)"、"public domain"、"Public Domain (PianoXML typeset)"），仍需确认来源可追溯；
-- 带 `<source>` 字段的 8 个，其中 5 个指向 musescore.com：按 B 规则重点核查。
+- 这些文件仍然留在继承来的 git 历史里，只在 fork 的最新版本中删除，效果有限；
+- 删除会破坏上游的测试，也会增加同步上游时的冲突。
 
-处理方式见同目录下 `DEVELOPMENT_PLAN.md` 的阶段 1。
+前提条件是：这些文件不进入任何发布内容，也就是 npm 包、公开 demo 和我们发布的截图里都不能有它们。
+
+以下是对 OSMD `develop`（提交 a308225）的一次自动预扫描，只统计 `<rights>` 字段，用来提醒哪些文件**不能**被选进发布样例清单：
+
+- 乐谱文件共 438 个（含 16 个 `.mxl`），其中 406 个没有 `<rights>` 字段；
+- 11 个声明 Recordare LLC 版权，其中 7 个被单元测试引用；
+- 明确写着 "All rights reserved" 的第三方作品，至少有 "© 2004 Polygames" 和 "© 1995 Dog Dream Music"；
+- 12 个 `<rights>` 只有 "Copyright ©"，没有写明权利人；
+- 3 个声明 CC0 或 Public Domain："OpenScore (CC0)"、"public domain"、"Public Domain (PianoXML typeset)"；
+- 8 个带 `<source>` 字段，其中 5 个指向 musescore.com；
+- 上游 `demo/` 目录中的 `BrahWiMeSample.musicxml`（MakeMusic 版权）和 `BrookeWestSample.musicxml`（Jonatha Brooke 的现代作品，只授权给 musicxml.com 展示）不得用于我们的公开 demo。
+
+如果要从上游样例里挑文件放进发布内容，必须对那个文件单独按第 1 节的规则核查，并登记到 fork 的 `fork-docs/release-samples.csv`。
